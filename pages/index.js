@@ -9,14 +9,15 @@ import { saveAs } from "file-saver"; // using the npm package
 import { firebase, auth, db } from "../lib/firebase";
 
 export default function Home() {
-  // State variables
-  const [otChapters, setOtChapters] = useState(3);
-  const [ntChapters, setNtChapters] = useState(2);
+  // State variables.
+  // Store chapter values as strings so that the user can clear the field.
+  const [otChapters, setOtChapters] = useState("3");
+  const [ntChapters, setNtChapters] = useState("2");
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Refs for tracking last clicked checkbox (for shift–click) and old settings
+  // Refs for tracking last clicked checkbox (for shift–click) and old settings.
   const lastCheckedRef = useRef(null);
   // oldSettingsRef stores the last saved settings: { ot, nt, total }
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
@@ -52,21 +53,17 @@ export default function Home() {
     const storedOT = localStorage.getItem("otChapters");
     const storedNT = localStorage.getItem("ntChapters");
     if (storedOT) {
-      setOtChapters(parseInt(storedOT, 10));
+      setOtChapters(storedOT);
     }
     if (storedNT) {
-      setNtChapters(parseInt(storedNT, 10));
+      setNtChapters(storedNT);
     }
     const storedProgress = localStorage.getItem("progressMap");
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
     }
     // During initial load, pass fromInit=true so that progress isn't cleared.
-    updateSchedule(
-      parseInt(storedOT, 10) || otChapters,
-      parseInt(storedNT, 10) || ntChapters,
-      true
-    );
+    updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
   };
 
   // Load user settings and progress from Firestore.
@@ -79,13 +76,13 @@ export default function Home() {
           const data = doc.data();
           if (data.settings) {
             if (data.settings.otChapters) {
-              setOtChapters(data.settings.otChapters);
+              setOtChapters(String(data.settings.otChapters));
             }
             if (data.settings.ntChapters) {
-              setNtChapters(data.settings.ntChapters);
+              setNtChapters(String(data.settings.ntChapters));
             }
-            localStorage.setItem("otChapters", data.settings.otChapters);
-            localStorage.setItem("ntChapters", data.settings.ntChapters);
+            localStorage.setItem("otChapters", String(data.settings.otChapters));
+            localStorage.setItem("ntChapters", String(data.settings.ntChapters));
           }
           // Merge local progress with Firestore progress.
           const localProgressStr = localStorage.getItem("progressMap");
@@ -96,8 +93,8 @@ export default function Home() {
             .doc(user.uid)
             .set({ progress: mergedProgress }, { merge: true });
           updateSchedule(
-            data.settings?.otChapters || otChapters,
-            data.settings?.ntChapters || ntChapters,
+            data.settings?.otChapters ? String(data.settings.otChapters) : otChapters,
+            data.settings?.ntChapters ? String(data.settings.ntChapters) : ntChapters,
             true
           );
         } else {
@@ -118,8 +115,8 @@ export default function Home() {
 
   // Save user settings to localStorage and Firestore (if signed in)
   const saveUserSettings = (ot, nt) => {
-    localStorage.setItem("otChapters", ot);
-    localStorage.setItem("ntChapters", nt);
+    localStorage.setItem("otChapters", String(ot));
+    localStorage.setItem("ntChapters", String(nt));
     if (currentUser) {
       db.collection("users")
         .doc(currentUser.uid)
@@ -152,6 +149,7 @@ export default function Home() {
   // If this is a user‑initiated update (fromInit=false) and the settings have changed,
   // then clear all progress. During initial load (fromInit=true) do not clear progress.
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
+    // Parse the values from strings to integers.
     const otNum = parseInt(ot, 10);
     const ntNum = parseInt(nt, 10);
     if (
@@ -445,16 +443,11 @@ export default function Home() {
             OT chapters/day (929 total):
             <input
               type="number"
-              min="1"
-              max="100"
+              // Removed min and max attributes so users can type freely.
               step="1"
               value={otChapters}
               onChange={(e) => {
-                let value = parseInt(e.target.value, 10);
-                if (isNaN(value)) value = 1;
-                if (value < 1) value = 1;
-                if (value > 100) value = 100;
-                setOtChapters(value);
+                setOtChapters(e.target.value);
               }}
             />
           </label>
@@ -463,16 +456,11 @@ export default function Home() {
             NT chapters/day (260 total):
             <input
               type="number"
-              min="1"
-              max="100"
+              // Removed min and max attributes so users can type freely.
               step="1"
               value={ntChapters}
               onChange={(e) => {
-                let value = parseInt(e.target.value, 10);
-                if (isNaN(value)) value = 1;
-                if (value < 1) value = 1;
-                if (value > 100) value = 100;
-                setNtChapters(value);
+                setNtChapters(e.target.value);
               }}
             />
           </label>
@@ -522,4 +510,4 @@ export default function Home() {
       </div>
     </>
   );
-}
+                                    }
