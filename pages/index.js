@@ -274,7 +274,7 @@ export default function Home() {
       const ntText = ntSchedule[day - 1];
       const otQuery = otText.replace(/\s/g, "");
       const ntQuery = ntText.replace(/\s/g, "");
-      const url = `https://www.literalword.com/?q=${otQuery},${ntQuery}`;
+      const url = `https://read.lsbible.org/?q=${otQuery},${ntQuery}`;
       const linkText = `${otText} | ${ntText}`;
       newSchedule.push({ day, passages: linkText, url });
     }
