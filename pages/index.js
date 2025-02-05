@@ -18,6 +18,7 @@ export default function Home() {
 
   // Refs for tracking last clicked checkbox (for shift–click) and old settings
   const lastCheckedRef = useRef(null);
+  // oldSettingsRef stores the last saved settings: { ot, nt, total }
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
   // --- Firebase Auth and User Data Loading ---
@@ -32,7 +33,7 @@ export default function Home() {
       }
     });
 
-    // If auth state isn't determined quickly, load local settings.
+    // In case auth state isn't determined quickly, load local settings.
     const timeoutId = setTimeout(() => {
       if (!currentUser) {
         loadLocalSettings();
@@ -60,6 +61,7 @@ export default function Home() {
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
     }
+    // During initial load, pass fromInit=true so that progress isn't cleared.
     updateSchedule(
       parseInt(storedOT, 10) || otChapters,
       parseInt(storedNT, 10) || ntChapters,
@@ -132,6 +134,7 @@ export default function Home() {
     console.log("Clearing saved progress.");
     setProgressMap({});
     localStorage.removeItem("progressMap");
+    // Remove individual day keys if present.
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem("check-day-" + i);
     }
@@ -139,11 +142,15 @@ export default function Home() {
       db.collection("users")
         .doc(currentUser.uid)
         .set({ progress: {} }, { merge: true })
-        .catch((error) => console.error("Error clearing progress in Firestore:", error));
+        .catch((error) =>
+          console.error("Error clearing progress in Firestore:", error)
+        );
     }
   };
 
   // Update the schedule based on OT and NT chapters per day.
+  // If this is a user‑initiated update (fromInit=false) and the settings have changed,
+  // then clear all progress. During initial load (fromInit=true) do not clear progress.
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
     const otNum = parseInt(ot, 10);
     const ntNum = parseInt(nt, 10);
@@ -165,29 +172,22 @@ export default function Home() {
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
 
-    // If settings haven't changed, do nothing.
-    if (
-      !fromInit &&
-      oldSettingsRef.current.ot !== null &&
-      oldSettingsRef.current.ot === otNum &&
-      oldSettingsRef.current.nt === ntNum &&
-      oldSettingsRef.current.total === totalDays
-    ) {
-      console.log("Settings unchanged; schedule remains the same.");
-      return;
-    }
-
-    // Only clear progress if signed in. For unsigned users, preserve local progress.
-    if (
-      oldSettingsRef.current.ot !== null &&
-      (oldSettingsRef.current.ot !== otNum ||
-       oldSettingsRef.current.nt !== ntNum ||
-       oldSettingsRef.current.total !== totalDays)
-    ) {
-      if (currentUser) {
+    if (!fromInit) {
+      // For a user‑initiated update, check if the settings have changed.
+      if (
+        oldSettingsRef.current.ot !== null &&
+        oldSettingsRef.current.ot === otNum &&
+        oldSettingsRef.current.nt === ntNum &&
+        oldSettingsRef.current.total === totalDays
+      ) {
+        console.log("Settings unchanged; schedule remains the same.");
+        return;
+      } else {
+        // Settings have changed: clear all progress.
         clearAllProgress();
       }
     }
+    // Update the stored settings.
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
     // Bible books arrays (OT and NT)
@@ -316,12 +316,12 @@ export default function Home() {
   };
 
   // --- Checkbox and Progress Handling ---
-  // Using onClick to capture shiftKey.
+  // Use onClick to capture shiftKey events.
   const handleCheckboxChange = (day, checked, event) => {
     if (event.shiftKey && lastCheckedRef.current !== null) {
       const start = Math.min(lastCheckedRef.current, day);
       const end = Math.max(lastCheckedRef.current, day);
-      // Build a new progress map for the range.
+      // Build a new progress map for the entire range.
       const newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
@@ -414,7 +414,7 @@ export default function Home() {
       await auth.signOut();
       setCurrentUser(null);
       setProgressMap({});
-      // Comment out the next line if you want unsigned progress to persist.
+      // If you want unsigned progress to persist after sign-out, comment out the next line.
       localStorage.clear();
     } catch (error) {
       console.error("Sign out error:", error);
@@ -505,7 +505,6 @@ export default function Home() {
                     </a>
                   </td>
                   <td className={styles.checkboxCell}>
-                    {/* onClick used to capture shiftKey events */}
                     <input
                       type="checkbox"
                       id={`check-day-${item.day}`}
