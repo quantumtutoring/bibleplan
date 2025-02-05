@@ -431,7 +431,7 @@ export default function Home() {
       <div className={styles.header} id="auth-header">
         {currentUser ? (
           <span className="user-info">
-            Welcome, {currentUser.email}{" "}
+            {currentUser.email}{" "}
             <button onClick={signOut}>Sign Out</button>
           </span>
         ) : (

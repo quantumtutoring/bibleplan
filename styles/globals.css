@@ -9,8 +9,8 @@ body {
   }
   h1, h2 {
     text-align: center;
-    margin-top: 10px;
-    font-size: 18px;
+    margin-top: 20px;
+    font-size: 28px;
   }
 
   .user-info {
@@ -48,9 +48,9 @@ body {
   table#scheduleTable th,
   table#scheduleTable td {
     padding: 6px 8px;
-    text-align: left;
+    text-align: center;
     border-bottom: 1px solid #ddd;
-    font-size: 12px;
+    font-size: 14px;
   }
   
   table#scheduleTable th {
