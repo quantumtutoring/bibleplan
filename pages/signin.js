@@ -1,21 +1,36 @@
 // pages/signin.js
+// Import necessary React hooks.
 import { useState } from "react";
+// Import Next.js components for managing document head and routing.
 import Head from "next/head";
 import Link from "next/link";
-import { firebase, auth } from "../lib/firebase";  // import firebase as well as auth
+// Import Firebase configuration for authentication.
+import { firebase, auth } from "../lib/firebase";  
+// Import the CSS module for this page.
 import styles from "../styles/Signin.module.css";
 
 export default function Signin() {
+  // ----------------------------
+  // Component State Initialization
+  // ----------------------------
+  // Email and password fields for authentication.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  // Message and message type for feedback.
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
 
+  // ----------------------------
+  // Sign In Handler
+  // ----------------------------
+  // Handles form submission for signing in.
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
     try {
+      // Attempt to sign in with email and password.
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      // Check if the user's email is verified.
       if (!userCredential.user.emailVerified) {
         setMessage("Please verify your email address. Check your inbox for the verification link.");
         setMsgType("error");
@@ -23,12 +38,14 @@ export default function Signin() {
       } else {
         setMessage("Sign in successful!");
         setMsgType("success");
+        // Redirect to home page after a brief delay.
         setTimeout(() => {
           window.location.href = "/";
         }, 1000);
       }
     } catch (error) {
       console.error("Sign in error:", error);
+      // Provide user-friendly error messages based on error codes.
       if (error.code === "auth/user-not-found") {
         setMessage("We couldn’t find an account with that email. Please check and try again.");
       } else if (error.code === "auth/wrong-password") {
@@ -42,17 +59,24 @@ export default function Signin() {
     }
   };
 
+  // ----------------------------
+  // Sign Up Handler
+  // ----------------------------
+  // Handles user registration and sends email verification.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
     try {
+      // Attempt to create a new user with email and password.
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      // Send verification email.
       await userCredential.user.sendEmailVerification();
       setMessage("Verification email sent. Please check your inbox.");
       setMsgType("success");
       await auth.signOut();
     } catch (error) {
       console.error("Sign up error:", error);
+      // Provide user-friendly error messages based on error codes.
       if (error.code === "auth/email-already-in-use") {
         setMessage("An account with this email already exists.");
       } else if (error.code === "auth/invalid-email") {
@@ -66,15 +90,21 @@ export default function Signin() {
     }
   };
 
+  // ----------------------------
+  // Google Sign In Handler
+  // ----------------------------
+  // Handles authentication using Google as a provider.
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
-    // Use firebase.auth.GoogleAuthProvider() instead of auth.GoogleAuthProvider()
+    // Create a new Google auth provider.
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
+      // Attempt to sign in with Google popup.
       const result = await auth.signInWithPopup(provider);
       setMessage("Google sign in successful!");
       setMsgType("success");
+      // Redirect to home page after a brief delay.
       setTimeout(() => {
         window.location.href = "/";
       }, 1000);
@@ -85,6 +115,10 @@ export default function Signin() {
     }
   };
 
+  // ----------------------------
+  // Reset Password Handler
+  // ----------------------------
+  // Sends a password reset email to the provided email address.
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -110,6 +144,10 @@ export default function Signin() {
     }
   };
 
+  // ----------------------------
+  // Component Render
+  // ----------------------------
+  // Render the sign in form, Google sign in button, and password reset option.
   return (
     <>
       <Head>
@@ -161,6 +199,7 @@ export default function Signin() {
           )}
         </form>
         <div className={styles.backToHome}>
+          {/* Optional: Additional navigation can be added here */}
         </div>
       </div>
     </>

@@ -1,45 +1,64 @@
 // pages/index.js
+// Import necessary React hooks for state and lifecycle management.
 import { useState, useEffect, useRef } from "react";
+// Import Next.js components for managing document head and routing.
 import Head from "next/head";
 import Link from "next/link";
+// Import CSS module styles specific to this page.
 import styles from "../styles/Home.module.css";
-import { saveAs } from "file-saver"; // using the npm package
+// Import the npm package FileSaver (saveAs function) for exporting Excel files.
+import { saveAs } from "file-saver"; 
 
-// Import your Firebase configuration and modules.
+// Import Firebase configuration and modules (firebase, authentication, and Firestore database).
 import { firebase, auth, db } from "../lib/firebase";
 
 export default function Home() {
-  // State variables
+  // ----------------------------
+  // Component State Initialization
+  // ----------------------------
+  // otChapters and ntChapters hold the user input for chapters per day.
   const [otChapters, setOtChapters] = useState(3);
   const [ntChapters, setNtChapters] = useState(2);
+  // schedule holds the generated reading schedule.
   const [schedule, setSchedule] = useState([]);
+  // progressMap tracks which days have been checked off.
   const [progressMap, setProgressMap] = useState({});
+  // currentUser holds the Firebase authenticated user (if any).
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Refs for tracking last clicked checkbox (for shift–click) and old settings
+  // ----------------------------
+  // Refs for Persistent Variables
+  // ----------------------------
+  // lastCheckedRef is used to track the last checkbox clicked (for shift-click functionality).
   const lastCheckedRef = useRef(null);
-  // oldSettingsRef stores the last saved settings: { ot, nt, total }
+  // oldSettingsRef stores the last saved input settings (OT, NT, totalDays) to detect changes.
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
-  // --- Firebase Auth and User Data Loading ---
+  // ----------------------------
+  // Firebase Authentication & Data Loading
+  // ----------------------------
   useEffect(() => {
+    // Listen for changes in authentication state.
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (user) {
+        // If a user is signed in, store the user and load their data from Firestore.
         setCurrentUser(user);
         loadUserData(user);
       } else {
+        // Otherwise, clear currentUser and load data from localStorage.
         setCurrentUser(null);
         loadLocalSettings();
       }
     });
 
-    // In case auth state isn't determined quickly, load local settings.
+    // Fallback in case the auth state isn't determined quickly.
     const timeoutId = setTimeout(() => {
       if (!currentUser) {
         loadLocalSettings();
       }
     }, 1000);
 
+    // Cleanup: unsubscribe from auth listener and clear the timeout.
     return () => {
       unsubscribe();
       clearTimeout(timeoutId);
@@ -47,8 +66,11 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load settings and progress from localStorage (for unsigned users)
+  // ----------------------------
+  // Load Settings & Progress for Unsigned Users
+  // ----------------------------
   const loadLocalSettings = () => {
+    // Get stored chapter values from localStorage.
     const storedOT = localStorage.getItem("otChapters");
     const storedNT = localStorage.getItem("ntChapters");
     if (storedOT) {
@@ -57,26 +79,31 @@ export default function Home() {
     if (storedNT) {
       setNtChapters(parseInt(storedNT, 10));
     }
+    // Retrieve saved progress if available.
     const storedProgress = localStorage.getItem("progressMap");
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
     }
-    // During initial load, pass fromInit=true so that progress isn't cleared.
+    // Generate schedule without clearing progress since this is an initial load.
     updateSchedule(
       parseInt(storedOT, 10) || otChapters,
       parseInt(storedNT, 10) || ntChapters,
-      true
+      true // fromInit flag is true during initial load.
     );
   };
 
-  // Load user settings and progress from Firestore.
+  // ----------------------------
+  // Load User Data from Firestore
+  // ----------------------------
   const loadUserData = (user) => {
+    // Retrieve the user's document from Firestore.
     db.collection("users")
       .doc(user.uid)
       .get()
       .then((doc) => {
         if (doc.exists) {
           const data = doc.data();
+          // If settings exist, update the component state and localStorage.
           if (data.settings) {
             if (data.settings.otChapters) {
               setOtChapters(data.settings.otChapters);
@@ -87,21 +114,23 @@ export default function Home() {
             localStorage.setItem("otChapters", data.settings.otChapters);
             localStorage.setItem("ntChapters", data.settings.ntChapters);
           }
-          // Merge local progress with Firestore progress.
+          // Merge local progress (if any) with progress stored in Firestore.
           const localProgressStr = localStorage.getItem("progressMap");
           const localProgress = localProgressStr ? JSON.parse(localProgressStr) : {};
           const mergedProgress = { ...localProgress, ...(data.progress || {}) };
           setProgressMap(mergedProgress);
+          // Update Firestore with the merged progress.
           db.collection("users")
             .doc(user.uid)
             .set({ progress: mergedProgress }, { merge: true });
+          // Update schedule without clearing progress.
           updateSchedule(
             data.settings?.otChapters || otChapters,
             data.settings?.ntChapters || ntChapters,
             true
           );
         } else {
-          // No user doc exists – use local progress.
+          // If no user document exists, fall back to local progress.
           const localProgressStr = localStorage.getItem("progressMap");
           const localProgress = localProgressStr ? JSON.parse(localProgressStr) : {};
           setProgressMap(localProgress);
@@ -116,7 +145,10 @@ export default function Home() {
       });
   };
 
-  // Save user settings to localStorage and Firestore (if signed in)
+  // ----------------------------
+  // Save User Settings
+  // ----------------------------
+  // Save the user's chapter settings to localStorage and Firestore (if authenticated).
   const saveUserSettings = (ot, nt) => {
     localStorage.setItem("otChapters", ot);
     localStorage.setItem("ntChapters", nt);
@@ -128,13 +160,15 @@ export default function Home() {
     }
   };
 
-  // --- Schedule and Progress Management ---
-  // Clear progress (and update Firestore if signed in)
+  // ----------------------------
+  // Clear All Progress
+  // ----------------------------
+  // Clear progress from both localStorage and Firestore (if user is signed in).
   const clearAllProgress = () => {
     console.log("Clearing saved progress.");
     setProgressMap({});
     localStorage.removeItem("progressMap");
-    // Remove individual day keys if present.
+    // Remove individual checkbox keys.
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem("check-day-" + i);
     }
@@ -148,12 +182,15 @@ export default function Home() {
     }
   };
 
-  // Update the schedule based on OT and NT chapters per day.
-  // If this is a user‑initiated update (fromInit=false) and the settings have changed,
-  // then clear all progress. During initial load (fromInit=true) do not clear progress.
+  // ----------------------------
+  // Update Schedule
+  // ----------------------------
+  // Generate a new schedule based on current OT and NT chapter settings.
+  // If it's a user-initiated update (fromInit is false) and settings have changed, clear progress.
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
     const otNum = parseInt(ot, 10);
     const ntNum = parseInt(nt, 10);
+    // Validate input values.
     if (
       isNaN(otNum) ||
       otNum < 1 ||
@@ -165,15 +202,17 @@ export default function Home() {
       alert("Please enter a valid number between 1 and 100 for both OT and NT chapters per day.");
       return;
     }
+    // Save the current settings.
     saveUserSettings(otNum, ntNum);
 
+    // Calculate total days based on total chapters in OT and NT.
     const totalOT = 929, totalNT = 260;
     const otDays = Math.ceil(totalOT / otNum);
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
 
     if (!fromInit) {
-      // For a user‑initiated update, check if the settings have changed.
+      // For user-initiated updates, check if settings have actually changed.
       if (
         oldSettingsRef.current.ot !== null &&
         oldSettingsRef.current.ot === otNum &&
@@ -187,10 +226,10 @@ export default function Home() {
         clearAllProgress();
       }
     }
-    // Update the stored settings.
+    // Update the stored old settings.
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
-    // Bible books arrays (OT and NT)
+    // Bible books arrays for OT and NT.
     const otBooks = [
       { name: "Gen", chapters: 50 },
       { name: "Exod", chapters: 40 },
@@ -262,26 +301,33 @@ export default function Home() {
       { name: "Rev", chapters: 22 },
     ];
 
+    // Determine if the reading schedule should cycle through books.
     const otCycle = otDays < totalDays;
     const ntCycle = ntDays < totalDays;
+    // Generate schedule arrays for OT and NT using legacy logic.
     const otSchedule = generateSchedule(otBooks, otNum, totalDays, otCycle);
     const ntSchedule = generateSchedule(ntBooks, ntNum, totalDays, ntCycle);
 
-    // Build the schedule array.
+    // Build the schedule array from the OT and NT schedules.
     const newSchedule = [];
     for (let day = 1; day <= totalDays; day++) {
       const otText = otSchedule[day - 1];
       const ntText = ntSchedule[day - 1];
+      // Prepare URL query by removing spaces.
       const otQuery = otText.replace(/\s/g, "");
       const ntQuery = ntText.replace(/\s/g, "");
       const url = `https://www.literalword.com/?q=${otQuery},${ntQuery}`;
       const linkText = `${otText} | ${ntText}`;
       newSchedule.push({ day, passages: linkText, url });
     }
+    // Update the schedule state with the newly generated schedule.
     setSchedule(newSchedule);
   };
 
-  // Schedule generator (legacy logic)
+  // ----------------------------
+  // Schedule Generator (Legacy Logic)
+  // ----------------------------
+  // This function generates an array of daily reading passages based on the provided books and chapters per day.
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
     let bookIdx = 0, chapter = 1;
@@ -291,6 +337,7 @@ export default function Home() {
       while (remaining > 0) {
         if (bookIdx >= books.length) {
           if (cycle) {
+            // Reset to the beginning if cycling is enabled.
             bookIdx = 0;
             chapter = 1;
           } else break;
@@ -299,11 +346,14 @@ export default function Home() {
         const total = books[bookIdx].chapters;
         const available = total - chapter + 1;
         if (available <= remaining) {
+          // If the remaining chapters in the book are less than or equal to the needed chapters,
+          // add the whole remaining range.
           daily.push(available === 1 ? `${book} ${chapter}` : `${book} ${chapter}-${total}`);
           remaining -= available;
           bookIdx++;
           chapter = 1;
         } else {
+          // Otherwise, add only the required number of chapters.
           const end = chapter + remaining - 1;
           daily.push(remaining === 1 ? `${book} ${chapter}` : `${book} ${chapter}-${end}`);
           chapter = end + 1;
@@ -315,20 +365,24 @@ export default function Home() {
     return scheduleArr;
   };
 
-  // --- Checkbox and Progress Handling ---
-  // Use onClick to capture shiftKey events.
+  // ----------------------------
+  // Checkbox and Progress Handling
+  // ----------------------------
+  // This function handles checkbox clicks and supports shift-click for selecting a range.
   const handleCheckboxChange = (day, checked, event) => {
     if (event.shiftKey && lastCheckedRef.current !== null) {
       const start = Math.min(lastCheckedRef.current, day);
       const end = Math.max(lastCheckedRef.current, day);
-      // Build a new progress map for the entire range.
+      // Build a new progress map covering the range between last clicked and current day.
       const newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
         localStorage.setItem("check-day-" + i, checked ? "true" : "false");
       }
+      // Update state and localStorage with the new progress map.
       setProgressMap(newProgress);
       localStorage.setItem("progressMap", JSON.stringify(newProgress));
+      // If user is signed in, update progress in Firestore.
       if (currentUser) {
         db.collection("users")
           .doc(currentUser.uid)
@@ -336,6 +390,7 @@ export default function Home() {
           .catch((error) => console.error("Error saving progress:", error));
       }
     } else {
+      // Handle a single checkbox click.
       const newProgress = { ...progressMap, [day]: checked };
       localStorage.setItem("check-day-" + day, checked ? "true" : "false");
       setProgressMap(newProgress);
@@ -347,10 +402,14 @@ export default function Home() {
           .catch((error) => console.error("Error saving progress:", error));
       }
     }
+    // Update lastClickedRef with the current day.
     lastCheckedRef.current = day;
   };
 
-  // --- Excel Export ---
+  // ----------------------------
+  // Excel Export Functionality
+  // ----------------------------
+  // Dynamically imports ExcelJS, creates a workbook from the schedule and progress, and triggers a download.
   const exportToExcel = async () => {
     try {
       const ExcelJS = (await import("exceljs")).default;
@@ -359,12 +418,14 @@ export default function Home() {
       const header = ["Day", "Passages", "Done"];
       worksheet.addRow(header);
 
+      // Add each day's data into the worksheet.
       schedule.forEach((item) => {
         const done = progressMap[item.day] ? "X" : "";
         const passageCellValue = { text: item.passages, hyperlink: item.url };
         worksheet.addRow([item.day, passageCellValue, done]);
       });
 
+      // Format the passages column to appear as hyperlinks.
       worksheet.getColumn(2).eachCell((cell, rowNumber) => {
         if (rowNumber === 1) return;
         if (cell.value && cell.value.hyperlink) {
@@ -372,6 +433,7 @@ export default function Home() {
         }
       });
 
+      // Compute column widths based on cell content.
       let data = [];
       worksheet.eachRow({ includeEmpty: true }, (row) => {
         let rowData = [];
@@ -400,6 +462,7 @@ export default function Home() {
         worksheet.getColumn(i + 1).width = cw.width;
       });
 
+      // Generate the Excel file and trigger a download.
       const buffer = await workbook.xlsx.writeBuffer();
       const blob = new Blob([buffer], { type: "application/octet-stream" });
       saveAs(blob, "bible_reading_progress.xlsx");
@@ -408,20 +471,26 @@ export default function Home() {
     }
   };
 
-  // --- Sign Out ---
+  // ----------------------------
+  // Sign Out Functionality
+  // ----------------------------
+  // Signs out the current user, clears progress and localStorage (if desired).
   const signOut = async () => {
     try {
       await auth.signOut();
       setCurrentUser(null);
       setProgressMap({});
-      // If you want unsigned progress to persist after sign-out, comment out the next line.
+      // Uncomment the next line if you want unsigned progress to persist after sign-out.
       localStorage.clear();
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
 
-  // --- Render ---
+  // ----------------------------
+  // Render Component
+  // ----------------------------
+  // The component renders the header, controls (input fields, buttons), and the schedule table.
   return (
     <>
       <Head>
