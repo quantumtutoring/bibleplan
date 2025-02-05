@@ -8,11 +8,14 @@
     "start": "next start"
   },
   "dependencies": {
+    "file-saver": "^2.0.5",
     "firebase": "latest",
     "next": "latest",
     "node.js": "^0.0.1-security",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "exceljs": "latest",
+    "file-saver": "latest"
   },
   "devDependencies": {
     "@types/react": "19.0.8",

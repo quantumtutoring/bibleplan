@@ -1,72 +1,167 @@
 // pages/signin.js
-import Head from 'next/head';
-import Script from 'next/script';
-import styles from '../styles/Signin.module.css';
-import Link from 'next/link';
+import { useState } from "react";
+import Head from "next/head";
+import Link from "next/link";
+import { firebase, auth } from "../lib/firebase";  // import firebase as well as auth
+import styles from "../styles/Signin.module.css";
 
 export default function Signin() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [message, setMessage] = useState("");
+  const [msgType, setMsgType] = useState(""); // "error" or "success"
+
+  const handleSignIn = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    try {
+      const userCredential = await auth.signInWithEmailAndPassword(email, password);
+      if (!userCredential.user.emailVerified) {
+        setMessage("Please verify your email address. Check your inbox for the verification link.");
+        setMsgType("error");
+        await auth.signOut();
+      } else {
+        setMessage("Sign in successful!");
+        setMsgType("success");
+        setTimeout(() => {
+          window.location.href = "/";
+        }, 1000);
+      }
+    } catch (error) {
+      console.error("Sign in error:", error);
+      if (error.code === "auth/user-not-found") {
+        setMessage("We couldn’t find an account with that email. Please check and try again.");
+      } else if (error.code === "auth/wrong-password") {
+        setMessage("The email or password you entered is incorrect. Please try again.");
+      } else if (error.code === "auth/invalid-email") {
+        setMessage("The email address is not valid. Please check the format and try again.");
+      } else {
+        setMessage("Error signing in: " + error.message);
+      }
+      setMsgType("error");
+    }
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    try {
+      const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+      await userCredential.user.sendEmailVerification();
+      setMessage("Verification email sent. Please check your inbox.");
+      setMsgType("success");
+      await auth.signOut();
+    } catch (error) {
+      console.error("Sign up error:", error);
+      if (error.code === "auth/email-already-in-use") {
+        setMessage("An account with this email already exists.");
+      } else if (error.code === "auth/invalid-email") {
+        setMessage("The email address is not valid.");
+      } else if (error.code === "auth/weak-password") {
+        setMessage("The password is too weak. Please choose a stronger password.");
+      } else {
+        setMessage("Error signing up: " + error.message);
+      }
+      setMsgType("error");
+    }
+  };
+
+  const handleGoogleSignIn = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    // Use firebase.auth.GoogleAuthProvider() instead of auth.GoogleAuthProvider()
+    const provider = new firebase.auth.GoogleAuthProvider();
+    try {
+      const result = await auth.signInWithPopup(provider);
+      setMessage("Google sign in successful!");
+      setMsgType("success");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+    } catch (error) {
+      console.error("Google sign in error:", error);
+      setMessage("Google sign in error: " + error.message);
+      setMsgType("error");
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    setMessage("");
+    if (!email) {
+      setMessage("Please enter your email address to reset your password.");
+      setMsgType("error");
+      return;
+    }
+    try {
+      await auth.sendPasswordResetEmail(email);
+      setMessage("Password reset email sent. Please check your inbox.");
+      setMsgType("success");
+    } catch (error) {
+      console.error("Reset password error:", error);
+      if (error.code === "auth/invalid-email") {
+        setMessage("The email address is not valid.");
+      } else if (error.code === "auth/user-not-found") {
+        setMessage("We couldn’t find an account with that email.");
+      } else {
+        setMessage("Error resetting password: " + error.message);
+      }
+      setMsgType("error");
+    }
+  };
+
   return (
     <>
       <Head>
         <title>Sign In - Bible Reading Plan</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
-      {/* Load Firebase libraries */}
-      <Script
-        src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"
-        strategy="beforeInteractive"
-      />
-      <Script
-        src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"
-        strategy="beforeInteractive"
-      />
-      <Script
-        src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"
-        strategy="beforeInteractive"
-      />
-      {/* Load your legacy sign-in script */}
-      <Script src="/signinScript.js" strategy="afterInteractive" />
-
       <div id="signin-container" className={styles.signinContainer}>
         <h2>Sign In</h2>
-        <form id="signin-form" className={styles.signinForm}>
-          <label>
-            Email:
-            <input type="email" id="email" required />
-          </label>
-          <label>
-            Password:
-            <input type="password" id="password" required />
-          </label>
+        <form className={styles.signinForm} onSubmit={handleSignIn}>
+          <div className={styles.inputGroup}>
+            <label htmlFor="email">Email</label>
+            <input 
+              type="email" 
+              id="email" 
+              placeholder="you@example.com" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
+          </div>
+          <div className={styles.inputGroup}>
+            <label htmlFor="password">Password</label>
+            <input 
+              type="password" 
+              id="password" 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
+          </div>
           <div className={styles.authButtons}>
-            {/* Email auth buttons in a row */}
             <div className={styles.emailAuth}>
-              <button type="button" className={styles.signIn} onClick={(e) => window.signIn(e)}>
-                Sign In
-              </button>
-              <button type="button" className={styles.signUp} onClick={(e) => window.signUp(e)}>
-                Create Account
-              </button>
+              <button type="submit" className={styles.signIn}>Sign In</button>
+              <button type="button" className={styles.signUp} onClick={handleSignUp}>Create Account</button>
             </div>
-            {/* Google sign-in button appears below */}
-            <button type="button" className={styles.googleSignin} onClick={(e) => window.googleSignIn(e)}>
+            <button type="button" className={styles.googleSignin} onClick={handleGoogleSignIn}>
               <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" />
               Sign in with Google
             </button>
           </div>
           <div className={styles.resetPassword}>
-            <a
-              href="#"
-              onClick={(e) => {
-                e.preventDefault();
-                window.resetPassword && window.resetPassword(e);
-              }}
-            >
-              Forgot your password?
-            </a>
+            <button type="button" onClick={handleResetPassword}>Forgot your password?</button>
           </div>
-          <div id="message" className={styles.message}></div>
+          {message && (
+            <div className={styles.message} style={{ color: msgType === "error" ? "red" : "green" }}>
+              {message}
+            </div>
+          )}
         </form>
+        <div className={styles.backToHome}>
+        </div>
       </div>
     </>
   );
