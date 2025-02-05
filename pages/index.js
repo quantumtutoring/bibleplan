@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import styles from "../styles/Home.module.css";
-import { saveAs } from "file-saver"; // npm package
+import { saveAs } from "file-saver"; // using the npm package
 
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
@@ -32,7 +32,7 @@ export default function Home() {
       }
     });
 
-    // In case auth state isn't determined quickly, load local settings.
+    // If auth state isn't determined quickly, load local settings.
     const timeoutId = setTimeout(() => {
       if (!currentUser) {
         loadLocalSettings();
@@ -46,7 +46,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load settings and progress from localStorage for unsigned users.
+  // Load settings and progress from localStorage (for unsigned users)
   const loadLocalSettings = () => {
     const storedOT = localStorage.getItem("otChapters");
     const storedNT = localStorage.getItem("ntChapters");
@@ -56,7 +56,6 @@ export default function Home() {
     if (storedNT) {
       setNtChapters(parseInt(storedNT, 10));
     }
-    // Load saved progress from localStorage.
     const storedProgress = localStorage.getItem("progressMap");
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
@@ -86,12 +85,11 @@ export default function Home() {
             localStorage.setItem("otChapters", data.settings.otChapters);
             localStorage.setItem("ntChapters", data.settings.ntChapters);
           }
-          // Merge local progress (if any) with Firestore progress.
+          // Merge local progress with Firestore progress.
           const localProgressStr = localStorage.getItem("progressMap");
           const localProgress = localProgressStr ? JSON.parse(localProgressStr) : {};
           const mergedProgress = { ...localProgress, ...(data.progress || {}) };
           setProgressMap(mergedProgress);
-          // Save merged progress back to Firestore.
           db.collection("users")
             .doc(user.uid)
             .set({ progress: mergedProgress }, { merge: true });
@@ -116,7 +114,7 @@ export default function Home() {
       });
   };
 
-  // Save user settings to localStorage and Firestore (if signed in).
+  // Save user settings to localStorage and Firestore (if signed in)
   const saveUserSettings = (ot, nt) => {
     localStorage.setItem("otChapters", ot);
     localStorage.setItem("ntChapters", nt);
@@ -129,7 +127,7 @@ export default function Home() {
   };
 
   // --- Schedule and Progress Management ---
-  // Clear progress (and update Firestore if signed in).
+  // Clear progress (and update Firestore if signed in)
   const clearAllProgress = () => {
     console.log("Clearing saved progress.");
     setProgressMap({});
@@ -194,41 +192,73 @@ export default function Home() {
 
     // Bible books arrays (OT and NT)
     const otBooks = [
-      { name: "Gen", chapters: 50 }, { name: "Exod", chapters: 40 },
-      { name: "Lev", chapters: 27 }, { name: "Num", chapters: 36 },
-      { name: "Deut", chapters: 34 }, { name: "Josh", chapters: 24 },
-      { name: "Judg", chapters: 21 }, { name: "Ruth", chapters: 4 },
-      { name: "1 Sam", chapters: 31 }, { name: "2 Sam", chapters: 24 },
-      { name: "1 Kgs", chapters: 22 }, { name: "2 Kgs", chapters: 25 },
-      { name: "1 Chr", chapters: 29 }, { name: "2 Chr", chapters: 36 },
-      { name: "Ezra", chapters: 10 }, { name: "Neh", chapters: 13 },
-      { name: "Est", chapters: 10 }, { name: "Job", chapters: 42 },
-      { name: "Ps", chapters: 150 }, { name: "Prov", chapters: 31 },
-      { name: "Eccl", chapters: 12 }, { name: "Song", chapters: 8 },
-      { name: "Isa", chapters: 66 }, { name: "Jer", chapters: 52 },
-      { name: "Lam", chapters: 5 }, { name: "Ezek", chapters: 48 },
-      { name: "Dan", chapters: 12 }, { name: "Hos", chapters: 14 },
-      { name: "Joel", chapters: 3 }, { name: "Amos", chapters: 9 },
-      { name: "Obad", chapters: 1 }, { name: "Jonah", chapters: 4 },
-      { name: "Mic", chapters: 7 }, { name: "Nah", chapters: 3 },
-      { name: "Hab", chapters: 3 }, { name: "Zeph", chapters: 3 },
-      { name: "Hag", chapters: 2 }, { name: "Zech", chapters: 14 },
+      { name: "Gen", chapters: 50 },
+      { name: "Exod", chapters: 40 },
+      { name: "Lev", chapters: 27 },
+      { name: "Num", chapters: 36 },
+      { name: "Deut", chapters: 34 },
+      { name: "Josh", chapters: 24 },
+      { name: "Judg", chapters: 21 },
+      { name: "Ruth", chapters: 4 },
+      { name: "1 Sam", chapters: 31 },
+      { name: "2 Sam", chapters: 24 },
+      { name: "1 Kgs", chapters: 22 },
+      { name: "2 Kgs", chapters: 25 },
+      { name: "1 Chr", chapters: 29 },
+      { name: "2 Chr", chapters: 36 },
+      { name: "Ezra", chapters: 10 },
+      { name: "Neh", chapters: 13 },
+      { name: "Est", chapters: 10 },
+      { name: "Job", chapters: 42 },
+      { name: "Ps", chapters: 150 },
+      { name: "Prov", chapters: 31 },
+      { name: "Eccl", chapters: 12 },
+      { name: "Song", chapters: 8 },
+      { name: "Isa", chapters: 66 },
+      { name: "Jer", chapters: 52 },
+      { name: "Lam", chapters: 5 },
+      { name: "Ezek", chapters: 48 },
+      { name: "Dan", chapters: 12 },
+      { name: "Hos", chapters: 14 },
+      { name: "Joel", chapters: 3 },
+      { name: "Amos", chapters: 9 },
+      { name: "Obad", chapters: 1 },
+      { name: "Jonah", chapters: 4 },
+      { name: "Mic", chapters: 7 },
+      { name: "Nah", chapters: 3 },
+      { name: "Hab", chapters: 3 },
+      { name: "Zeph", chapters: 3 },
+      { name: "Hag", chapters: 2 },
+      { name: "Zech", chapters: 14 },
       { name: "Mal", chapters: 4 },
     ];
     const ntBooks = [
-      { name: "Matt", chapters: 28 }, { name: "Mark", chapters: 16 },
-      { name: "Luke", chapters: 24 }, { name: "John", chapters: 21 },
-      { name: "Acts", chapters: 28 }, { name: "Rom", chapters: 16 },
-      { name: "1 Cor", chapters: 16 }, { name: "2 Cor", chapters: 13 },
-      { name: "Gal", chapters: 6 }, { name: "Eph", chapters: 6 },
-      { name: "Phil", chapters: 4 }, { name: "Col", chapters: 4 },
-      { name: "1 Thess", chapters: 5 }, { name: "2 Thess", chapters: 3 },
-      { name: "1 Tim", chapters: 6 }, { name: "2 Tim", chapters: 4 },
-      { name: "Titus", chapters: 3 }, { name: "Philem", chapters: 1 },
-      { name: "Heb", chapters: 13 }, { name: "Jas", chapters: 5 },
-      { name: "1 Pet", chapters: 5 }, { name: "2 Pet", chapters: 3 },
-      { name: "1 John", chapters: 5 }, { name: "2 John", chapters: 1 },
-      { name: "3 John", chapters: 1 }, { name: "Jude", chapters: 1 },
+      { name: "Matt", chapters: 28 },
+      { name: "Mark", chapters: 16 },
+      { name: "Luke", chapters: 24 },
+      { name: "John", chapters: 21 },
+      { name: "Acts", chapters: 28 },
+      { name: "Rom", chapters: 16 },
+      { name: "1 Cor", chapters: 16 },
+      { name: "2 Cor", chapters: 13 },
+      { name: "Gal", chapters: 6 },
+      { name: "Eph", chapters: 6 },
+      { name: "Phil", chapters: 4 },
+      { name: "Col", chapters: 4 },
+      { name: "1 Thess", chapters: 5 },
+      { name: "2 Thess", chapters: 3 },
+      { name: "1 Tim", chapters: 6 },
+      { name: "2 Tim", chapters: 4 },
+      { name: "Titus", chapters: 3 },
+      { name: "Philem", chapters: 1 },
+      { name: "Heb", chapters: 13 },
+      { name: "Jas", chapters: 5 },
+      { name: "1 Pet", chapters: 5 },
+      { name: "2 Pet", chapters: 3 },
+      { name: "1 John", chapters: 5 },
+      { name: "2 John", chapters: 1 },
+      { name: "3 John", chapters: 1 },
+      { name: "Jude", chapters: 1 },
       { name: "Rev", chapters: 22 },
     ];
 
@@ -286,18 +316,17 @@ export default function Home() {
   };
 
   // --- Checkbox and Progress Handling ---
-  // Use onClick to capture shiftKey.
+  // Using onClick to capture shiftKey.
   const handleCheckboxChange = (day, checked, event) => {
     if (event.shiftKey && lastCheckedRef.current !== null) {
       const start = Math.min(lastCheckedRef.current, day);
       const end = Math.max(lastCheckedRef.current, day);
-      // Create a new progress map for the range.
+      // Build a new progress map for the range.
       const newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
         localStorage.setItem("check-day-" + i, checked ? "true" : "false");
       }
-      // Update state and localStorage once.
       setProgressMap(newProgress);
       localStorage.setItem("progressMap", JSON.stringify(newProgress));
       if (currentUser) {
@@ -307,7 +336,6 @@ export default function Home() {
           .catch((error) => console.error("Error saving progress:", error));
       }
     } else {
-      // For a single checkbox click.
       const newProgress = { ...progressMap, [day]: checked };
       localStorage.setItem("check-day-" + day, checked ? "true" : "false");
       setProgressMap(newProgress);
@@ -319,7 +347,7 @@ export default function Home() {
           .catch((error) => console.error("Error saving progress:", error));
       }
     }
-    lastCheckedRef.current = day; // Update the last clicked day.
+    lastCheckedRef.current = day;
   };
 
   // --- Excel Export ---
@@ -386,7 +414,7 @@ export default function Home() {
       await auth.signOut();
       setCurrentUser(null);
       setProgressMap({});
-      // To preserve unsigned progress after sign-out, comment out the next line.
+      // Comment out the next line if you want unsigned progress to persist.
       localStorage.clear();
     } catch (error) {
       console.error("Sign out error:", error);
@@ -419,8 +447,15 @@ export default function Home() {
               type="number"
               min="1"
               max="100"
+              step="1"
               value={otChapters}
-              onChange={(e) => setOtChapters(Number(e.target.value))}
+              onChange={(e) => {
+                let value = parseInt(e.target.value, 10);
+                if (isNaN(value)) value = 1;
+                if (value < 1) value = 1;
+                if (value > 100) value = 100;
+                setOtChapters(value);
+              }}
             />
           </label>
           <br />
@@ -430,8 +465,15 @@ export default function Home() {
               type="number"
               min="1"
               max="100"
+              step="1"
               value={ntChapters}
-              onChange={(e) => setNtChapters(Number(e.target.value))}
+              onChange={(e) => {
+                let value = parseInt(e.target.value, 10);
+                if (isNaN(value)) value = 1;
+                if (value < 1) value = 1;
+                if (value > 100) value = 100;
+                setNtChapters(value);
+              }}
             />
           </label>
           <br /><br />
@@ -463,7 +505,7 @@ export default function Home() {
                     </a>
                   </td>
                   <td className={styles.checkboxCell}>
-                    {/* Using onClick to capture shiftKey */}
+                    {/* onClick used to capture shiftKey events */}
                     <input
                       type="checkbox"
                       id={`check-day-${item.day}`}
