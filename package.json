@@ -1,0 +1,21 @@
+{
+  "name": "readingplannext",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "firebase": "latest",
+    "next": "latest",
+    "node.js": "^0.0.1-security",
+    "react": "latest",
+    "react-dom": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "19.0.8",
+    "typescript": "5.7.3"
+  }
+}

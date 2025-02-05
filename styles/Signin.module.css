@@ -1,0 +1,144 @@
+/* styles/Signin.module.css */
+.signinContainer {
+  max-width: 350px;
+  margin: 80px auto;
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  box-sizing: border-box;
+}
+
+.signinContainer h2 {
+  margin-bottom: 15px;
+  color: #007BFF;
+}
+
+/* Use a local class for the form */
+.signinForm {
+  display: flex;
+  flex-direction: column;
+}
+
+.signinForm label {
+  margin-bottom: 10px;
+  font-weight: 500;
+  color: #333;
+}
+
+.signinForm input[type="email"],
+.signinForm input[type="password"] {
+  width: 100%;
+  padding: 8px;
+  margin-top: 5px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* Container for all authentication buttons */
+.authButtons {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 15px;
+}
+
+/* Group for email-based auth buttons */
+.emailAuth {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* Styling for buttons */
+.authButtons button {
+  padding: 8px 16px;
+  font-size: 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+/* Email sign-in button */
+.signIn {
+  background: #007BFF;
+  color: #fff;
+  border:none;
+}
+
+.signIn:hover {
+  background: #0056b3;
+}
+
+/* Create account button */
+.signUp {
+  background: #fff;
+  color: #007BFF;
+  border: 1px solid #007BFF;
+}
+
+.signUp:hover {
+  background: #007BFF;
+  color: #fff;
+}
+
+/* Google sign-in button positioned underneath */
+.googleSignin {
+  background-color: #fff;
+  border: 1px solid #dcdcdc;
+  color: #555;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 4px;
+  width: 70%;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.googleSignin:hover {
+  background-color: #f7f7f7;
+}
+
+.googleSignin img {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+/* Reset Password Link */
+.resetPassword {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.resetPassword a {
+  color: #007BFF;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.resetPassword a:hover {
+  color: #0056b3;
+}
+
+/* Message styling */
+.message {
+  text-align: center;
+  margin-top: 10px;
+  font-size: 14px;
+}
+
+.error {
+  color: red;
+}
+
+.notification {
+  color: green;
+}

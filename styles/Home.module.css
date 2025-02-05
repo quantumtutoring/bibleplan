@@ -1,0 +1,91 @@
+/* styles/Home.module.css */
+.header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 20px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.header a {
+  text-decoration: none;
+  color: #007BFF;
+  font-size: 16px;
+}
+
+
+.container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 5px;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.controls {
+  text-align: center;
+  margin: 10px 0;
+}
+
+.controls input {
+  width: 60px;
+  padding: 4px;
+  font-size: 14px;
+  margin: 0 5px;
+}
+
+.controls button {
+  padding: 4px 8px;
+  font-size: 14px;
+  cursor: pointer;
+  margin: 5px;
+  border: none;
+  background: #007BFF;
+  color: #fff;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+}
+
+.controls button:hover {
+  background: #0056b3;
+}
+
+/* Local styling for the table using a local class */
+.scheduleTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+}
+
+.scheduleTable th,
+.scheduleTable td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+  font-size: 12px;
+}
+
+.scheduleTable th {
+  background: #007BFF;
+  color: #fff;
+}
+
+.scheduleTable tr:hover {
+  background-color: #f1f1f1;
+}
+
+.checkboxCell {
+  text-align: center;
+  width: 40px;
+}
+
+@media screen and (max-width: 600px) {
+  .container, .scheduleTable, .scheduleTable th, .scheduleTable td {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+}
