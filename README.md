@@ -1,36 +1,39 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bible Reading Plan
 
-## Getting Started
+A Next.js/React Bible Reading Plan app that generates daily Bible reading schedules based on user-defined chapters per day for both the Old and New Testaments, integrates with Firebase for user authentication and progress storage, supports shift‑click multi‑selection, and allows exporting the schedule to Excel.
 
-First, run the development server:
+## Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **Schedule Generation:**  
+  Automatically creates a daily reading schedule for the Bible based on user inputs (OT and NT chapters per day).
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Persistent Progress:**  
+  Checkboxes track reading progress and persist across page reloads using localStorage (and Firestore for signed‑in users).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Shift‑Click Support:**  
+  Easily mark multiple days as complete by holding shift and clicking checkboxes.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Excel Export:**  
+  Export your reading schedule and progress to an Excel file using ExcelJS and FileSaver.
 
-## Learn More
+- **Firebase Integration:**  
+  Manage user authentication and sync user progress/settings via Firebase.
 
-To learn more about Next.js, take a look at the following resources:
+- **Input Validation:**  
+  Enforces that chapters per day can only be integers between 1 and 100.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Technologies
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- [Next.js](https://nextjs.org/)
+- [React](https://reactjs.org/)
+- [Firebase](https://firebase.google.com/)
+- [ExcelJS](https://www.npmjs.com/package/exceljs)
+- [FileSaver](https://www.npmjs.com/package/file-saver)
 
-## Deploy on Vercel
+## Installation
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Clone the repository:**
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+   ```bash
+   git clone https://github.com/yourusername/bible-reading-plan.git
+   cd bible-reading-plan
