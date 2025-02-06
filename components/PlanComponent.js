@@ -47,8 +47,8 @@ export default function PlanComponent() {
   };
 
   // --- State variables ---
-  const [otChapters, setOtChapters] = useState("3");
-  const [ntChapters, setNtChapters] = useState("2");
+  const [otChapters, setOtChapters] = useState("2");
+  const [ntChapters, setNtChapters] = useState("1");
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
