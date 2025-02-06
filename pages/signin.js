@@ -55,7 +55,7 @@ export default function Signin() {
         // 2.1 - route them to their saved version
         setTimeout(() => {
           routeToVersion(user.uid);
-        }, 1000);
+        }, 0);
       }
     } catch (error) {
       console.error("Sign in error:", error);
@@ -132,7 +132,7 @@ export default function Signin() {
       // 4.1 - route them to their saved version
       setTimeout(() => {
         routeToVersion(user.uid);
-      }, 1000);
+      }, 0);
     } catch (error) {
       console.error("Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
