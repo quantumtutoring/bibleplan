@@ -22,6 +22,7 @@ export default function Signin() {
         const storedVersion = userData?.settings?.version;
         if (storedVersion === "lsb") route = "/lsb";
         else if (storedVersion === "esv") route = "/esv";
+        else if (storedVersion === "nasb") route = "/nasb";
         // else default to "/"
       }
       // Now actually redirect
@@ -71,13 +72,33 @@ export default function Signin() {
     }
   };
 
-  // 3. SIGN UP (Email/Password)
+  // 3. SIGN UP (Email/Password) with initial data population
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
-      await userCredential.user.sendEmailVerification();
+      const user = userCredential.user;
+
+      // Retrieve current settings and progress from localStorage.
+      // Defaults are provided in case values are missing.
+      const otChapters = localStorage.getItem("otChapters") || "2";
+      const ntChapters = localStorage.getItem("ntChapters") || "1";
+      const version = localStorage.getItem("version") || "nasb";
+      const progressMap = localStorage.getItem("progressMap")
+        ? JSON.parse(localStorage.getItem("progressMap"))
+        : {};
+
+      // Populate initial user data in Firestore.
+      await db.collection("users").doc(user.uid).set(
+        {
+          settings: { otChapters, ntChapters, version },
+          progress: progressMap,
+        },
+        { merge: true }
+      );
+
+      await user.sendEmailVerification();
       setMessage("Verification email sent. Please check your inbox.");
       setMsgType("success");
       await auth.signOut(); // sign them out so they verify first
@@ -204,7 +225,6 @@ export default function Signin() {
           )}
         </form>
         <div className={styles.backToHome}>
-          {/* If you want a link back to home or something else */}
           <Link href="/">Back to Home</Link>
         </div>
       </div>

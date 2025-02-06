@@ -21,11 +21,11 @@ function saveUserVersion(version, currentUser, db) {
 }
 
 export default function PlanComponent() {
-  // 1) Determine which version (HOME, LSB, ESV) from the router path.
+  // 1) Determine which version (NASB, LSB, ESV) from the router path.
   const router = useRouter();
-  const path = router.pathname; // "/", "/lsb", or "/esv"
+  const path = router.pathname; // "/nasb", "/lsb", or "/esv"
 
-  let version = "home";
+  let version = "nasb";
   if (path === "/lsb") {
     version = "lsb";
   } else if (path === "/esv") {
@@ -34,15 +34,15 @@ export default function PlanComponent() {
 
   // 2) Handler for changing the dropdown value.
   const handleVersionChange = (e) => {
-    const newVal = e.target.value; // "home", "lsb", or "esv"
+    const newVal = e.target.value; // "nasb", "lsb", or "esv"
     saveUserVersion(newVal, currentUser, db);
     if (newVal === "lsb") {
       router.push("/lsb");
     } else if (newVal === "esv") {
       router.push("/esv");
     } else {
-      // default to home
-      router.push("/");
+      // default to nasb
+      router.push("/nasb");
     }
   };
 
@@ -66,7 +66,7 @@ export default function PlanComponent() {
 
   // 2) useEffect: whenever version changes, or user logs in/out, store it
   useEffect(() => {
-    // Only save if we actually have a known version (home/lsb/esv)
+    // Only save if we actually have a known version (nasb/lsb/esv)
     if (version) {
       saveUserVersion(version, currentUser, db);
     }
@@ -544,7 +544,7 @@ export default function PlanComponent() {
         {/* Dropdown in top-right */}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <select value={version} onChange={handleVersionChange}>
-            <option value="home">NASB</option>
+            <option value="nasb">NASB</option>
             <option value="lsb">LSB</option>
             <option value="esv">ESV</option>
           </select>
