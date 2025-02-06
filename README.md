@@ -38,7 +38,7 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 1. **Clone the repository:**
    ```bash
    git clone https://github.com/quantumtutoring/bibleplan.git  
-   cd bibleplan```
+   cd bibleplan
 
 2. **Install dependencies:**
    ```bash
