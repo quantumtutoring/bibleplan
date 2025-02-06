@@ -2,8 +2,9 @@
 import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { firebase, auth } from "../lib/firebase";  // import firebase as well as auth
+import { firebase, auth, db } from "../lib/firebase";  // <-- Import db as well
 import styles from "../styles/Signin.module.css";
+
 
 export default function Signin() {
   const [email, setEmail] = useState("");
@@ -11,20 +12,53 @@ export default function Signin() {
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
 
+  // --------------------------------------
+  // 1. HELPER: route to version from Firestore
+  // --------------------------------------
+  const routeToVersion = async (uid) => {
+    try {
+      const docRef = db.collection("users").doc(uid);
+      const docSnap = await docRef.get();
+      let route = "/";
+      if (docSnap.exists) {
+        const userData = docSnap.data();
+        const storedVersion = userData?.settings?.version;
+        if (storedVersion === "lsb") route = "/lsb";
+        else if (storedVersion === "esv") route = "/esv";
+        // else default to "/"
+      }
+      // Now actually redirect
+      window.location.href = route;
+    } catch (error) {
+      console.error("Error fetching user version:", error);
+      // If something goes wrong, just go home
+      window.location.href = "/";
+    }
+  };
+
+  // --------------------------------------
+  // 2. SIGN IN (Email/Password)
+  // --------------------------------------
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
     try {
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
-      if (!userCredential.user.emailVerified) {
+      const user = userCredential.user;
+
+      // If the user’s email is not verified:
+      if (!user.emailVerified) {
         setMessage("Please verify your email address. Check your inbox for the verification link.");
         setMsgType("error");
         await auth.signOut();
       } else {
+        // Verified => success
         setMessage("Sign in successful!");
         setMsgType("success");
+
+        // 2.1 - route them to their saved version
         setTimeout(() => {
-          window.location.href = "/";
+          routeToVersion(user.uid);
         }, 1000);
       }
     } catch (error) {
@@ -42,6 +76,9 @@ export default function Signin() {
     }
   };
 
+  // --------------------------------------
+  // 3. SIGN UP (Email/Password)
+  // --------------------------------------
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -50,7 +87,7 @@ export default function Signin() {
       await userCredential.user.sendEmailVerification();
       setMessage("Verification email sent. Please check your inbox.");
       setMsgType("success");
-      await auth.signOut();
+      await auth.signOut(); // sign them out so they verify first
     } catch (error) {
       console.error("Sign up error:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -66,17 +103,23 @@ export default function Signin() {
     }
   };
 
+  // --------------------------------------
+  // 4. SIGN IN WITH GOOGLE
+  // --------------------------------------
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
-    // Use firebase.auth.GoogleAuthProvider() instead of auth.GoogleAuthProvider()
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       const result = await auth.signInWithPopup(provider);
+      const user = result.user;
+
       setMessage("Google sign in successful!");
       setMsgType("success");
+
+      // 4.1 - route them to their saved version
       setTimeout(() => {
-        window.location.href = "/";
+        routeToVersion(user.uid);
       }, 1000);
     } catch (error) {
       console.error("Google sign in error:", error);
@@ -85,6 +128,9 @@ export default function Signin() {
     }
   };
 
+  // --------------------------------------
+  // 5. RESET PASSWORD
+  // --------------------------------------
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -110,12 +156,16 @@ export default function Signin() {
     }
   };
 
+  // --------------------------------------
+  // RENDER
+  // --------------------------------------
   return (
     <>
       <Head>
         <title>Sign In - Bible Reading Plan</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
+
       <div id="signin-container" className={styles.signinContainer}>
         <h2>Sign In</h2>
         <form className={styles.signinForm} onSubmit={handleSignIn}>
@@ -141,6 +191,7 @@ export default function Signin() {
               required 
             />
           </div>
+
           <div className={styles.authButtons}>
             <div className={styles.emailAuth}>
               <button type="submit" className={styles.signIn}>Sign In</button>
@@ -151,16 +202,22 @@ export default function Signin() {
               Sign in with Google
             </button>
           </div>
+
           <div className={styles.resetPassword}>
             <button type="button" onClick={handleResetPassword}>Forgot your password?</button>
           </div>
+
           {message && (
-            <div className={styles.message} style={{ color: msgType === "error" ? "red" : "green" }}>
+            <div 
+              className={styles.message} 
+              style={{ color: msgType === "error" ? "red" : "green" }}
+            >
               {message}
             </div>
           )}
         </form>
         <div className={styles.backToHome}>
+          {/* If you want a link back to home or something else */}
         </div>
       </div>
     </>

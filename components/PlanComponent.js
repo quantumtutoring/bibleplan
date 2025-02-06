@@ -8,6 +8,17 @@ import { saveAs } from "file-saver"; // using the npm package
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
 
+// Helper declared outside
+function saveUserVersion(version, currentUser, db) {
+  localStorage.setItem("version", version);
+  if (currentUser) {
+    db.collection("users")
+      .doc(currentUser.uid)
+      .set({ settings: { version } }, { merge: true })
+      .catch((err) => console.error("Error saving version to Firestore:", err));
+  }
+}
+
 export default function PlanComponent() {
   // 1) Determine which version (HOME, LSB, ESV) from the router path.
   const router = useRouter();
@@ -23,6 +34,7 @@ export default function PlanComponent() {
   // 2) Handler for changing the dropdown value.
   const handleVersionChange = (e) => {
     const newVal = e.target.value; // "home", "lsb", or "esv"
+    saveUserVersion(newVal, currentUser, db);
     if (newVal === "lsb") {
       router.push("/lsb");
     } else if (newVal === "esv") {
@@ -41,6 +53,26 @@ export default function PlanComponent() {
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
+
+  // 1) Helper to save version
+  function saveUserVersion(version, currentUser, db) {
+    localStorage.setItem("version", version);
+    if (currentUser) {
+      db.collection("users")
+        .doc(currentUser.uid)
+        .set({ settings: { version } }, { merge: true })
+        .catch((err) => console.error("Error saving version to Firestore:", err));
+    }
+  }
+
+    // 2) useEffect: whenever version changes, or user logs in/out, store it
+    useEffect(() => {
+      // Only save if we actually have a known version (home/lsb/esv)
+      if (version) {
+        saveUserVersion(version, currentUser, db);
+      }
+    }, [version, currentUser]);
+
 
   // Refs for tracking last clicked checkbox (for shift–click) and old settings.
   const lastCheckedRef = useRef(null);
@@ -315,7 +347,7 @@ export default function PlanComponent() {
       // 3) Construct the passage URL based on version:
       let url;
       if (version === "lsb") {
-        url = `https://read.lsbible.org/?Q=${otQuery},${ntQuery}`;
+        url = `https://read.lsbible.org/?q=${otQuery},${ntQuery}`;
       } else if (version === "esv") {
         url = `https://esv.literalword.com/?q=${otQuery},${ntQuery}`;
       } else {
@@ -502,9 +534,9 @@ export default function PlanComponent() {
 
       <div className={styles.container} id="main-content">
         {/* Dropdown in top-left */}
-        <div style={{ display: "flex", justifyContent: "flex-start" }}>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <select value={version} onChange={handleVersionChange}>
-            <option value="home">HOME</option>
+            <option value="home">NASB</option>
             <option value="lsb">LSB</option>
             <option value="esv">ESV</option>
           </select>
