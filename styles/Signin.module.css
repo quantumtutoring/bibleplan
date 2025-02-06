@@ -77,7 +77,7 @@
 }
 
 .inputGroup input:focus {
-  border-color: #007BFF;
+  border-color: var(--theme-color);
 }
 
 .authButtons {
@@ -103,7 +103,7 @@
 }
 
 .signIn {
-  background: #007BFF;
+  background: var(--theme-color);
   color: #fff;
   border:none;
 }
@@ -114,12 +114,12 @@
 
 .signUp {
   background: #fff;
-  color: #007BFF;
-  border: 1px solid #007BFF;
+  color: var(--theme-color);
+  border: 1px solid var(--theme-color);
 }
 
 .signUp:hover {
-  background: #007BFF;
+  background: var(--theme-color);
   color: #fff;
 }
 
@@ -156,7 +156,7 @@
 .resetPassword button {
   background: none;
   border: none;
-  color: #007BFF;
+  color: var(--theme-color);
   cursor: pointer;
   text-decoration: underline;
   font-size: 0.9rem;
@@ -179,10 +179,11 @@
 }
 
 .backToHome a {
-  color: #007BFF;
+  color: var(--theme-color);
   text-decoration: none;
 }
 
 .backToHome a:hover {
   text-decoration: underline;
+  color:#0056b3;
 }
