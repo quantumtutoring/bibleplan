@@ -517,7 +517,7 @@ export default function PlanComponent() {
   return (
     <>
       <Head>
-        <title>Bible Reading Plan</title>
+        <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
 
@@ -542,7 +542,7 @@ export default function PlanComponent() {
           </select>
         </div>
 
-        <h1>Bible Reading Plan</h1>
+        <h1>Bible Reading Planner</h1>
 
         <div className={styles.controls}>
           <label>
