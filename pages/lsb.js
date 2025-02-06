@@ -1,6 +1,6 @@
-// pages/index.js
+// pages/lsb.js
 import PlanComponent from "../components/PlanComponent";
 
-export default function Home() {
+export default function LSB() {
   return <PlanComponent />;
 }
