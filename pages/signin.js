@@ -2,9 +2,8 @@
 import { useState } from "react";
 import Head from "next/head";
 import Link from "next/link";
-import { firebase, auth, db } from "../lib/firebase";  // <-- Import db as well
+import { firebase, auth, db } from "../lib/firebase"; // <-- Import db as well
 import styles from "../styles/Signin.module.css";
-
 
 export default function Signin() {
   const [email, setEmail] = useState("");
@@ -12,9 +11,7 @@ export default function Signin() {
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
 
-  // --------------------------------------
   // 1. HELPER: route to version from Firestore
-  // --------------------------------------
   const routeToVersion = async (uid) => {
     try {
       const docRef = db.collection("users").doc(uid);
@@ -36,9 +33,7 @@ export default function Signin() {
     }
   };
 
-  // --------------------------------------
   // 2. SIGN IN (Email/Password)
-  // --------------------------------------
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -76,9 +71,7 @@ export default function Signin() {
     }
   };
 
-  // --------------------------------------
   // 3. SIGN UP (Email/Password)
-  // --------------------------------------
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -103,9 +96,7 @@ export default function Signin() {
     }
   };
 
-  // --------------------------------------
   // 4. SIGN IN WITH GOOGLE
-  // --------------------------------------
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -128,9 +119,7 @@ export default function Signin() {
     }
   };
 
-  // --------------------------------------
   // 5. RESET PASSWORD
-  // --------------------------------------
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -156,11 +145,9 @@ export default function Signin() {
     }
   };
 
-  // --------------------------------------
   // RENDER
-  // --------------------------------------
   return (
-    <>
+    <div className={styles.pageBackground}>
       <Head>
         <title>Sign In - Bible Reading Plan</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -218,8 +205,9 @@ export default function Signin() {
         </form>
         <div className={styles.backToHome}>
           {/* If you want a link back to home or something else */}
+          <Link href="/">Back to Home</Link>
         </div>
       </div>
-    </>
+    </div>
   );
 }

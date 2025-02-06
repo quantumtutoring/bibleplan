@@ -14,13 +14,36 @@
   font-size: 16px;
 }
 
+.pageBackground {
+  /* Point to your image in the public folder */
+  background: url("/background.jpg") no-repeat center center fixed;
+  background-size: cover;
+
+  /* Ensure it fills the height */
+  min-height: 100vh;
+
+  /* If you want to ensure no extra margins/padding */
+  margin: 0;
+  padding: 0;
+}
+
+/* If desired, ensure header and container are transparent or partially transparent
+   so the background image can show through. This depends on your design: */
+
+.header {
+  background-color: rgba(255, 255, 255, 0.9); 
+  font-weight:bold;
+}
+.container {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
 
 .container {
   max-width: 600px;
-  margin: 20px auto;
-  margin-top:70px;
+  margin: auto;
+  margin-top: 140px;
   padding: 5px;
-  background: #fff;
   border-radius: 4px;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }

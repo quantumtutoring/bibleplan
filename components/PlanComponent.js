@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
 import { saveAs } from "file-saver"; // using the npm package
+import Image from 'next/image';
 
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
@@ -46,8 +47,6 @@ export default function PlanComponent() {
   };
 
   // --- State variables ---
-  // Same improved number input logic from your code: storing as strings
-  // so the user can clear the field and type fresh.
   const [otChapters, setOtChapters] = useState("3");
   const [ntChapters, setNtChapters] = useState("2");
   const [schedule, setSchedule] = useState([]);
@@ -65,14 +64,13 @@ export default function PlanComponent() {
     }
   }
 
-    // 2) useEffect: whenever version changes, or user logs in/out, store it
-    useEffect(() => {
-      // Only save if we actually have a known version (home/lsb/esv)
-      if (version) {
-        saveUserVersion(version, currentUser, db);
-      }
-    }, [version, currentUser]);
-
+  // 2) useEffect: whenever version changes, or user logs in/out, store it
+  useEffect(() => {
+    // Only save if we actually have a known version (home/lsb/esv)
+    if (version) {
+      saveUserVersion(version, currentUser, db);
+    }
+  }, [version, currentUser]);
 
   // Refs for tracking last clicked checkbox (for shift–click) and old settings.
   const lastCheckedRef = useRef(null);
@@ -333,8 +331,18 @@ export default function PlanComponent() {
     ];
 
     // Generate schedule arrays
-    const otSchedule = generateSchedule(otBooks, otNum, totalDays, otDays < totalDays);
-    const ntSchedule = generateSchedule(ntBooks, ntNum, totalDays, ntDays < totalDays);
+    const otSchedule = generateSchedule(
+      otBooks,
+      otNum,
+      totalDays,
+      otDays < totalDays
+    );
+    const ntSchedule = generateSchedule(
+      ntBooks,
+      ntNum,
+      totalDays,
+      ntDays < totalDays
+    );
 
     // Build the schedule array.
     const newSchedule = [];
@@ -362,7 +370,7 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
   };
 
-  // Schedule generator (unchanged from your snippet).
+  // Schedule generator
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
     let bookIdx = 0,
@@ -515,7 +523,7 @@ export default function PlanComponent() {
 
   // --- Render ---
   return (
-    <>
+    <div className={styles.pageBackground}>
       <Head>
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -533,7 +541,7 @@ export default function PlanComponent() {
       </div>
 
       <div className={styles.container} id="main-content">
-        {/* Dropdown in top-left */}
+        {/* Dropdown in top-right */}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <select value={version} onChange={handleVersionChange}>
             <option value="home">NASB</option>
@@ -614,6 +622,6 @@ export default function PlanComponent() {
           </table>
         </div>
       </div>
-    </>
+    </div>
   );
 }

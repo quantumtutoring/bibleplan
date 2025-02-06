@@ -1,9 +1,42 @@
 /* styles/Signin.module.css */
+
+/* 1) The full-page background. */
+.pageBackground {
+  background: url("/background.jpg") no-repeat center center fixed;
+  background-size: cover;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  align-items: center; /* optional - vertically center */
+  justify-content: center; /* optional - horizontally center */
+}
+
+/* 2) Container for the sign in form content */
+.signinContainer {
+  /* Optionally give the container a nice background, 
+     so text is easier to read on top of the background image. */
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 2rem;
+  border-radius: 8px;
+  max-width: 400px;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Example form styling, as you already have: */
+.signinForm {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ...the rest of your existing styles... */
+
+
 .signinContainer {
   max-width: 400px;
   margin: 80px auto;
   padding: 30px 40px;
-  background: #fff;
   border: 1px solid #eaeaea;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
