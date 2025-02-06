@@ -1,11 +1,14 @@
-# Bible Reading Plan
+# Bible Reading Planner
 
-A Next.js/React Bible Reading Plan app that generates daily Bible reading schedules based on user-defined chapters per day for both the Old and New Testaments, integrates with Firebase for user authentication and progress storage, supports shift‑click multi‑selection, and allows exporting the schedule to Excel.
+A Next.js/React Bible Reading Planner app that generates daily Bible reading schedules based on user-defined chapters per day for both the Old and New Testaments, integrates with Firebase for user authentication and progress storage, supports shift‑click multi‑selection, and allows exporting the schedule to Excel. The app now supports multiple Bible translations: **NASB** (default), **ESV**, and **LSB**.
 
 ## Features
 
 - **Schedule Generation:**  
   Automatically creates a daily reading schedule for the Bible based on user inputs (OT and NT chapters per day).
+
+- **Multiple Bible Versions:**  
+  Choose from NASB (default), ESV, or LSB versions. The application provides separate pages for ESV and LSB (`/pages/esv.js` and `/pages/lsb.js` respectively), while the NASB version is available on the main page (`/pages/index.js`).
 
 - **Persistent Progress:**  
   Checkboxes track reading progress and persist across page reloads using localStorage (and Firestore for signed‑in users).
@@ -34,8 +37,8 @@ A Next.js/React Bible Reading Plan app that generates daily Bible reading schedu
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/bible-reading-plan.git  
-   cd bible-reading-plan```
+   git clone https://github.com/yourusername/bible-reading-planner.git  
+   cd bible-reading-planner```
 
 2. **Install dependencies:**
    ```bash
@@ -60,21 +63,26 @@ A Next.js/React Bible Reading Plan app that generates daily Bible reading schedu
 
 ## Project Structure
 ```pgsql
-bible-reading-plan/  
-├── lib/  
-│   └── firebase.js         (Firebase initialization and configuration)  
-├── pages/  
-│   ├── _app.js             (Global App wrapper, imports global CSS, providers, etc.)  
-│   ├── index.js            (Main Bible Reading Plan page)  
-│   └── signin.js           (Sign-in page)  
-├── public/  
-│   └── favicon.svg         (Favicon)  
-├── styles/  
-│   ├── globals.css         (Global CSS styles)  
-│   ├── Home.module.css     (Styles for the index page)  
-│   └── Signin.module.css   (Styles for the sign-in page)  
-├── package.json  
+bible-plan/
+├── components/
+│   └── PlanComponent.js      (Logic and formatting for the Bible Reading Planner pages)
+├── lib/
+│   └── firebase.js       (Firebase initialization and configuration)
+├── pages/
+│   ├── _app.js           (Global App wrapper, imports global CSS, providers, etc.)
+│   ├── index.js          (Default NASB Bible Reading Planner page)
+│   ├── esv.js            (ESV Bible Reading Planner page)
+│   ├── lsb.js            (LSB Bible Reading Planner page)
+│   └── signin.js         (Sign-in page)
+├── public/
+│   └── favicon.svg       (Favicon)
+├── styles/
+│   ├── globals.css       (Global CSS styles)
+│   ├── Home.module.css   (Styles for the index page)
+│   └── Signin.module.css (Styles for the sign-in page)
+├── package.json
 └── README.md
+
 ```
 
 
@@ -94,6 +102,9 @@ bible-reading-plan/
 
 5. **Authentication:**  
    Sign in using the provided sign‑in page to save your progress in Firestore; unsigned progress is stored locally.
+
+6. **Switch Bible Versions:**  
+   Navigate to / for the NASB version (default), /esv for the ESV version, or /lsb for the LSB version.
 
 ## Deployment
 
