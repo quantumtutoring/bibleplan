@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
 import { saveAs } from "file-saver"; // using the npm package
-import Image from 'next/image';
+import Image from "next/image";
 
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
@@ -42,20 +42,21 @@ export default function PlanComponent() {
   const [progressMap, setProgressMap] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
 
-  // 1) Helper to save version
+  // Helper to save version.
   function saveUserVersion(version, currentUser, db) {
     localStorage.setItem("version", version);
     if (currentUser) {
       db.collection("users")
         .doc(currentUser.uid)
         .set({ settings: { version } }, { merge: true })
-        .catch((err) => console.error("Error saving version to Firestore:", err));
+        .catch((err) =>
+          console.error("Error saving version to Firestore:", err)
+        );
     }
   }
 
-  // 2) useEffect: whenever version changes, or user logs in/out, store it
+  // Save version whenever it changes or the user logs in/out.
   useEffect(() => {
-    // Only save if we actually have a known version (nasb/lsb/esv)
     if (version) {
       saveUserVersion(version, currentUser, db);
     }
@@ -65,12 +66,14 @@ export default function PlanComponent() {
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
-  // --- Firebase Auth and User Data Loading ---
+  // --- Firebase Auth and Realtime Firestore Sync ---
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    let unsubscribeUserSnapshot;
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
-        loadUserData(user);
+        // Set up a realtime listener for user data.
+        unsubscribeUserSnapshot = loadUserData(user);
       } else {
         setCurrentUser(null);
         loadLocalSettings();
@@ -85,13 +88,15 @@ export default function PlanComponent() {
     }, 1000);
 
     return () => {
-      unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeUserSnapshot) {
+        unsubscribeUserSnapshot();
+      }
       clearTimeout(timeoutId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load settings and progress from localStorage (for unsigned users)
+  // Load settings and progress from localStorage (for unsigned users).
   const loadLocalSettings = () => {
     const storedOT = localStorage.getItem("otChapters");
     const storedNT = localStorage.getItem("ntChapters");
@@ -105,58 +110,46 @@ export default function PlanComponent() {
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
     }
-    // During initial load, pass fromInit=true so that progress isn't cleared.
     updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
   };
 
-  // Load user settings and progress from Firestore.
+  // Load user settings and progress from Firestore with realtime updates.
+  // Returns the unsubscribe function for the listener.
   const loadUserData = (user) => {
-    db.collection("users")
+    return db
+      .collection("users")
       .doc(user.uid)
-      .get()
-      .then((doc) => {
+      .onSnapshot((doc) => {
         if (doc.exists) {
           const data = doc.data();
           if (data.settings) {
             if (data.settings.otChapters) {
-              setOtChapters(String(data.settings.otChapters));
+              const newOT = String(data.settings.otChapters);
+              setOtChapters(newOT);
+              localStorage.setItem("otChapters", newOT);
             }
             if (data.settings.ntChapters) {
-              setNtChapters(String(data.settings.ntChapters));
+              const newNT = String(data.settings.ntChapters);
+              setNtChapters(newNT);
+              localStorage.setItem("ntChapters", newNT);
             }
-            localStorage.setItem(
-              "otChapters",
-              String(data.settings.otChapters)
-            );
-            localStorage.setItem(
-              "ntChapters",
-              String(data.settings.ntChapters)
-            );
           }
-          // Merge local progress with Firestore progress.
-          const localProgressStr = localStorage.getItem("progressMap");
-          const localProgress = localProgressStr
-            ? JSON.parse(localProgressStr)
-            : {};
-          const mergedProgress = { ...localProgress, ...(data.progress || {}) };
-          setProgressMap(mergedProgress);
-          
-          // Save merged progress back to Firestore:
-          db.collection("users")
-            .doc(user.uid)
-            .set({ progress: mergedProgress }, { merge: true });
-
+          if (data.progress) {
+            // Update progress unconditionally so that cleared progress is applied.
+            setProgressMap(data.progress);
+            localStorage.setItem("progressMap", JSON.stringify(data.progress));
+          }
           updateSchedule(
-            data.settings?.otChapters
+            data.settings && data.settings.otChapters
               ? String(data.settings.otChapters)
               : otChapters,
-            data.settings?.ntChapters
+            data.settings && data.settings.ntChapters
               ? String(data.settings.ntChapters)
               : ntChapters,
             true
           );
         } else {
-          // No user doc exists – use local progress.
+          // If no user document exists, use local progress.
           const localProgressStr = localStorage.getItem("progressMap");
           const localProgress = localProgressStr
             ? JSON.parse(localProgressStr)
@@ -167,13 +160,10 @@ export default function PlanComponent() {
             .set({ progress: localProgress }, { merge: true });
           updateSchedule(otChapters, ntChapters, true);
         }
-      })
-      .catch((err) => {
-        console.error("Error loading user data:", err);
       });
   };
 
-  // Save user settings to localStorage and Firestore (if signed in)
+  // Save user settings to localStorage and Firestore (if signed in).
   const saveUserSettings = (ot, nt) => {
     localStorage.setItem("otChapters", String(ot));
     localStorage.setItem("ntChapters", String(nt));
@@ -186,19 +176,19 @@ export default function PlanComponent() {
   };
 
   // --- Schedule and Progress Management ---
-  // Clear progress (and update Firestore if signed in)
+  // Clear progress (and update Firestore if signed in).
   const clearAllProgress = () => {
     console.log("Clearing saved progress.");
     setProgressMap({});
     localStorage.removeItem("progressMap");
-    // Remove individual day keys if present.
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem("check-day-" + i);
     }
     if (currentUser) {
+      // Use update() so the entire progress field is replaced with an empty object.
       db.collection("users")
         .doc(currentUser.uid)
-        .set({ progress: {} }, { merge: true })
+        .update({ progress: {} })
         .catch((error) =>
           console.error("Error clearing progress in Firestore:", error)
         );
@@ -207,7 +197,6 @@ export default function PlanComponent() {
 
   // Update the schedule based on OT and NT chapters per day.
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
-    // Parse the values from strings to integers.
     const otNum = parseInt(ot, 10);
     const ntNum = parseInt(nt, 10);
     if (
@@ -232,7 +221,6 @@ export default function PlanComponent() {
     const totalDays = Math.max(otDays, ntDays);
 
     if (!fromInit) {
-      // For a user‑initiated update, check if the settings have changed.
       if (
         oldSettingsRef.current.ot !== null &&
         oldSettingsRef.current.ot === otNum &&
@@ -245,10 +233,9 @@ export default function PlanComponent() {
         clearAllProgress();
       }
     }
-    // Update the stored settings.
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
-    // Bible books arrays (OT and NT)
+    // Bible books arrays.
     const otBooks = [
       { name: "Gen", chapters: 50 },
       { name: "Exod", chapters: 40 },
@@ -320,7 +307,7 @@ export default function PlanComponent() {
       { name: "Rev", chapters: 22 },
     ];
 
-    // Generate schedule arrays
+    // Generate schedule arrays.
     const otSchedule = generateSchedule(
       otBooks,
       otNum,
@@ -342,14 +329,12 @@ export default function PlanComponent() {
       const otQuery = otText.replace(/\s/g, " ");
       const ntQuery = ntText.replace(/\s/g, " ");
 
-      // 3) Construct the passage URL based on version:
       let url;
       if (version === "lsb") {
         url = `https://read.lsbible.org/?q=${otQuery}, ${ntQuery}`;
       } else if (version === "esv") {
         url = `https://esv.literalword.com/?q=${otQuery}, ${ntQuery}`;
       } else {
-        // default: home
         url = `https://www.literalword.com/?q=${otQuery}, ${ntQuery}`;
       }
 
@@ -360,7 +345,7 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
   };
 
-  // Schedule generator
+  // Schedule generator.
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
     let bookIdx = 0,
@@ -410,7 +395,6 @@ export default function PlanComponent() {
     if (event.shiftKey && lastCheckedRef2.current !== null) {
       const start = Math.min(lastCheckedRef2.current, day);
       const end = Math.max(lastCheckedRef2.current, day);
-      // Build a new progress map for the entire range.
       const newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
@@ -422,7 +406,9 @@ export default function PlanComponent() {
         db.collection("users")
           .doc(currentUser.uid)
           .set({ progress: newProgress }, { merge: true })
-          .catch((error) => console.error("Error saving progress:", error));
+          .catch((error) =>
+            console.error("Error saving progress:", error)
+          );
       }
     } else {
       const newProgress = { ...progressMap, [day]: checked };
@@ -433,7 +419,9 @@ export default function PlanComponent() {
         db.collection("users")
           .doc(currentUser.uid)
           .set({ progress: newProgress }, { merge: true })
-          .catch((error) => console.error("Error saving progress:", error));
+          .catch((error) =>
+            console.error("Error saving progress:", error)
+          );
       }
     }
     lastCheckedRef2.current = day;
@@ -461,7 +449,6 @@ export default function PlanComponent() {
         }
       });
 
-      // Auto-size columns
       let data = [];
       worksheet.eachRow({ includeEmpty: true }, (row) => {
         let rowData = [];
@@ -504,7 +491,6 @@ export default function PlanComponent() {
       await auth.signOut();
       setCurrentUser(null);
       setProgressMap({});
-      // If you want unsigned progress to persist after sign-out, comment out the next line.
       localStorage.clear();
     } catch (error) {
       console.error("Sign out error:", error);
