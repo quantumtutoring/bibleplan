@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
 import { saveAs } from "file-saver"; // using the npm package
-import Image from 'next/image';
+import Image from "next/image";
 
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
@@ -49,7 +49,9 @@ export default function PlanComponent() {
       db.collection("users")
         .doc(currentUser.uid)
         .set({ settings: { version } }, { merge: true })
-        .catch((err) => console.error("Error saving version to Firestore:", err));
+        .catch((err) =>
+          console.error("Error saving version to Firestore:", err)
+        );
     }
   }
 
@@ -65,12 +67,18 @@ export default function PlanComponent() {
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
-  // --- Firebase Auth and User Data Loading ---
+  // --- Firebase Auth and Realtime Firestore Sync ---
+  // This effect sets up an authentication state listener and a Firestore realtime listener
+  // so that if Firestore user data changes, the local settings and progress are updated.
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
+    let unsubscribeUserSnapshot;
+    const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
-        loadUserData(user);
+        // Set up a realtime listener for user data from Firestore.
+        // This listener will continuously check if the Firestore user document
+        // differs from the local data and update localStorage and state if necessary.
+        unsubscribeUserSnapshot = loadUserData(user);
       } else {
         setCurrentUser(null);
         loadLocalSettings();
@@ -85,7 +93,10 @@ export default function PlanComponent() {
     }, 1000);
 
     return () => {
-      unsubscribe();
+      unsubscribeAuth();
+      if (unsubscribeUserSnapshot) {
+        unsubscribeUserSnapshot();
+      }
       clearTimeout(timeoutId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -109,48 +120,43 @@ export default function PlanComponent() {
     updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
   };
 
-  // Load user settings and progress from Firestore.
+  // Load user settings and progress from Firestore with realtime updates.
+  // Returns the unsubscribe function for the Firestore listener.
   const loadUserData = (user) => {
-    db.collection("users")
+    return db
+      .collection("users")
       .doc(user.uid)
-      .get()
-      .then((doc) => {
+      .onSnapshot((doc) => {
         if (doc.exists) {
           const data = doc.data();
           if (data.settings) {
             if (data.settings.otChapters) {
-              setOtChapters(String(data.settings.otChapters));
+              const newOT = String(data.settings.otChapters);
+              if (newOT !== otChapters) {
+                setOtChapters(newOT);
+                localStorage.setItem("otChapters", newOT);
+              }
             }
             if (data.settings.ntChapters) {
-              setNtChapters(String(data.settings.ntChapters));
+              const newNT = String(data.settings.ntChapters);
+              if (newNT !== ntChapters) {
+                setNtChapters(newNT);
+                localStorage.setItem("ntChapters", newNT);
+              }
             }
-            localStorage.setItem(
-              "otChapters",
-              String(data.settings.otChapters)
-            );
-            localStorage.setItem(
-              "ntChapters",
-              String(data.settings.ntChapters)
-            );
           }
-          // Merge local progress with Firestore progress.
-          const localProgressStr = localStorage.getItem("progressMap");
-          const localProgress = localProgressStr
-            ? JSON.parse(localProgressStr)
-            : {};
-          const mergedProgress = { ...localProgress, ...(data.progress || {}) };
-          setProgressMap(mergedProgress);
-          
-          // Save merged progress back to Firestore:
-          db.collection("users")
-            .doc(user.uid)
-            .set({ progress: mergedProgress }, { merge: true });
-
+          if (data.progress) {
+            const newProgress = data.progress;
+            if (JSON.stringify(newProgress) !== JSON.stringify(progressMap)) {
+              setProgressMap(newProgress);
+              localStorage.setItem("progressMap", JSON.stringify(newProgress));
+            }
+          }
           updateSchedule(
-            data.settings?.otChapters
+            data.settings && data.settings.otChapters
               ? String(data.settings.otChapters)
               : otChapters,
-            data.settings?.ntChapters
+            data.settings && data.settings.ntChapters
               ? String(data.settings.ntChapters)
               : ntChapters,
             true
@@ -167,9 +173,6 @@ export default function PlanComponent() {
             .set({ progress: localProgress }, { merge: true });
           updateSchedule(otChapters, ntChapters, true);
         }
-      })
-      .catch((err) => {
-        console.error("Error loading user data:", err);
       });
   };
 
@@ -422,7 +425,9 @@ export default function PlanComponent() {
         db.collection("users")
           .doc(currentUser.uid)
           .set({ progress: newProgress }, { merge: true })
-          .catch((error) => console.error("Error saving progress:", error));
+          .catch((error) =>
+            console.error("Error saving progress:", error)
+          );
       }
     } else {
       const newProgress = { ...progressMap, [day]: checked };
@@ -433,7 +438,9 @@ export default function PlanComponent() {
         db.collection("users")
           .doc(currentUser.uid)
           .set({ progress: newProgress }, { merge: true })
-          .catch((error) => console.error("Error saving progress:", error));
+          .catch((error) =>
+            console.error("Error saving progress:", error)
+          );
       }
     }
     lastCheckedRef2.current = day;
