@@ -14,43 +14,7 @@ export default function Signin() {
   const router = useRouter();
   const [shouldRender, setShouldRender] = useState(false);
 
-  useEffect(() => {
-    // Listen for auth state changes.
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) {
-        // If user is signed in, fetch their Firestore document.
-        try {
-          const userDoc = await db.collection("users").doc(user.uid).get();
-          const userData = userDoc.data();
-
-          // Update localStorage progressMap with Firestore values.
-          // If no progress exists, it will default to an empty object.
-          localStorage.setItem("progressMap", JSON.stringify(userData?.progress || {}));
-
-          const storedVersion = userData?.settings?.version;
-          // If the version is one of our expected values, redirect immediately.
-          if (storedVersion === "lsb" || storedVersion === "esv" || storedVersion === "nasb") {
-            router.push(`/${storedVersion}`);
-          } else {
-            // If there’s no valid version, render the signin page.
-            setShouldRender(true);
-          }
-        } catch (error) {
-          console.error("Error fetching user version from Firestore:", error);
-          setShouldRender(true);
-        }
-      } else {
-        // If not signed in, simply render the page.
-        setShouldRender(true);
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
-
-  // While waiting for authentication/Firestore, nothing is rendered.
-  if (!shouldRender) {
-    return null;
-  }
+  
 
   // 1. HELPER: Route to version from Firestore and update localStorage progressMap.
   const routeToVersion = async (uid) => {
