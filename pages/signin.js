@@ -11,9 +11,7 @@ export default function Signin() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
-
-
-const router = useRouter();
+  const router = useRouter();
   const [shouldRender, setShouldRender] = useState(false);
 
   useEffect(() => {
@@ -24,12 +22,17 @@ const router = useRouter();
         try {
           const userDoc = await db.collection("users").doc(user.uid).get();
           const userData = userDoc.data();
+
+          // Update localStorage progressMap with Firestore values.
+          // If no progress exists, it will default to an empty object.
+          localStorage.setItem("progressMap", JSON.stringify(userData?.progress || {}));
+
           const storedVersion = userData?.settings?.version;
           // If the version is one of our expected values, redirect immediately.
           if (storedVersion === "lsb" || storedVersion === "esv" || storedVersion === "nasb") {
             router.push(`/${storedVersion}`);
           } else {
-            // If there’s no valid version, render the PlanComponent.
+            // If there’s no valid version, render the signin page.
             setShouldRender(true);
           }
         } catch (error) {
@@ -49,7 +52,7 @@ const router = useRouter();
     return null;
   }
 
-  // 1. HELPER: route to version from Firestore
+  // 1. HELPER: Route to version from Firestore and update localStorage progressMap.
   const routeToVersion = async (uid) => {
     try {
       const docRef = db.collection("users").doc(uid);
@@ -57,17 +60,20 @@ const router = useRouter();
       let route = "/";
       if (docSnap.exists) {
         const userData = docSnap.data();
+
+        // Update localStorage progressMap with Firestore values.
+        localStorage.setItem("progressMap", JSON.stringify(userData?.progress || {}));
+
         const storedVersion = userData?.settings?.version;
         if (storedVersion === "lsb") route = "/lsb";
         else if (storedVersion === "esv") route = "/esv";
         else if (storedVersion === "nasb") route = "/nasb";
-        // else default to "/"
       }
-      // Now actually redirect
+      // Now actually redirect.
       window.location.href = route;
     } catch (error) {
       console.error("Error fetching user version:", error);
-      // If something goes wrong, just go home
+      // If something goes wrong, just go home.
       window.location.href = "/";
     }
   };
@@ -86,11 +92,11 @@ const router = useRouter();
         setMsgType("error");
         await auth.signOut();
       } else {
-        // Verified => success
+        // Verified => success.
         setMessage("Sign in successful!");
         setMsgType("success");
 
-        // 2.1 - route them to their saved version
+        // 2.1 - Route them to their saved version (this will also update localStorage).
         setTimeout(() => {
           routeToVersion(user.uid);
         }, 0);
@@ -110,7 +116,7 @@ const router = useRouter();
     }
   };
 
-  // 3. SIGN UP (Email/Password) with initial data population
+  // 3. SIGN UP (Email/Password) with initial data population.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -139,7 +145,7 @@ const router = useRouter();
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please check your inbox.");
       setMsgType("success");
-      await auth.signOut(); // sign them out so they verify first
+      await auth.signOut(); // Sign them out so they verify first.
     } catch (error) {
       console.error("Sign up error:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -167,7 +173,7 @@ const router = useRouter();
       setMessage("Google sign in successful!");
       setMsgType("success");
 
-      // 4.1 - route them to their saved version
+      // 4.1 - Route them to their saved version (this will also update localStorage).
       setTimeout(() => {
         routeToVersion(user.uid);
       }, 0);
@@ -241,7 +247,9 @@ const router = useRouter();
           <div className={styles.authButtons}>
             <div className={styles.emailAuth}>
               <button type="submit" className={styles.signIn}>Sign In</button>
-              <button type="button" className={styles.signUp} onClick={handleSignUp}>Create Account</button>
+              <button type="button" className={styles.signUp} onClick={handleSignUp}>
+                Create Account
+              </button>
             </div>
             <button type="button" className={styles.googleSignin} onClick={handleGoogleSignIn}>
               <img src="https://developers.google.com/identity/images/g-logo.png" alt="Google logo" />

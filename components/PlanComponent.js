@@ -9,17 +9,6 @@ import Image from 'next/image';
 // Import your Firebase configuration and modules.
 import { firebase, auth, db } from "../lib/firebase";
 
-// Helper declared outside
-function saveUserVersion(version, currentUser, db) {
-  localStorage.setItem("version", version);
-  if (currentUser) {
-    db.collection("users")
-      .doc(currentUser.uid)
-      .set({ settings: { version } }, { merge: true })
-      .catch((err) => console.error("Error saving version to Firestore:", err));
-  }
-}
-
 export default function PlanComponent() {
   // 1) Determine which version (NASB, LSB, ESV) from the router path.
   const router = useRouter();
@@ -151,6 +140,7 @@ export default function PlanComponent() {
             : {};
           const mergedProgress = { ...localProgress, ...(data.progress || {}) };
           setProgressMap(mergedProgress);
+          
           // Save merged progress back to Firestore:
           db.collection("users")
             .doc(user.uid)
