@@ -1,27 +1,47 @@
+/**
+ * PlanComponent.js
+ *
+ * Main component for the Bible Reading Planner.
+ *
+ * Key functionalities:
+ * - Determines the Bible version (NASB, LSB, ESV) from the current route.
+ * - Loads user settings and progress either from Firestore (for signed‑in users) or from localStorage (for guests).
+ * - Creates a reading schedule based on OT and NT chapter settings.
+ * - Handles user interactions such as checkbox progress updates, schedule generation, and Excel export.
+ * - Provides sign‑out functionality that resets localStorage to default values (version "nasb", OT chapters "2", NT chapters "1", and cleared progress) and routes the user to the homepage.
+ */
+
 import { useState, useEffect, useRef } from "react";
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
 import styles from "../styles/Home.module.css";
-import { saveAs } from "file-saver"; // using the npm package
+import { saveAs } from "file-saver"; // Used for exporting to Excel.
 import Image from "next/image";
 
-// Import your Firebase configuration and modules.
+// Import Firebase configuration and modules (auth, Firestore DB, etc.).
 import { firebase, auth, db } from "../lib/firebase";
 
 export default function PlanComponent() {
-  // 1) Determine which version (NASB, LSB, ESV) from the router path.
+  // ----------------------------------------------------------
+  // 1. Determine Bible Version from Router Path
+  // ----------------------------------------------------------
+  // The version is derived from the current URL path.
+  // Example: "/nasb", "/lsb", or "/esv". Default is "nasb".
   const router = useRouter();
-  const path = router.pathname; // "/nasb", "/lsb", or "/esv"
-
-  let version = "nasb";
+  const path = router.pathname; // e.g., "/nasb", "/lsb", or "/esv"
+  let version = "nasb"; // default version
   if (path === "/lsb") {
     version = "lsb";
   } else if (path === "/esv") {
     version = "esv";
   }
 
-  // 2) Handler for changing the dropdown value.
+  // ----------------------------------------------------------
+  // 2. Dropdown Handler for Changing Bible Version
+  // ----------------------------------------------------------
+  // When the dropdown value changes, this handler saves the new version to both localStorage and Firestore,
+  // then redirects the user to the corresponding route.
   const handleVersionChange = (e) => {
     const newVal = e.target.value; // "nasb", "lsb", or "esv"
     saveUserVersion(newVal, currentUser, db);
@@ -30,19 +50,36 @@ export default function PlanComponent() {
     } else if (newVal === "esv") {
       router.push("/esv");
     } else {
-      // default to nasb
+      // Default to nasb.
       router.push("/nasb");
     }
   };
 
-  // --- State variables ---
+  // ----------------------------------------------------------
+  // 3. Component State Variables
+  // ----------------------------------------------------------
+  // These state variables store chapter settings, the reading schedule, progress data,
+  // and the currently authenticated user.
   const [otChapters, setOtChapters] = useState("2");
   const [ntChapters, setNtChapters] = useState("1");
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Helper to save version.
+  // ----------------------------------------------------------
+  // 4. Helper Functions
+  // ----------------------------------------------------------
+
+  /**
+   * saveUserVersion
+   *
+   * Saves the selected Bible version to localStorage. If a user is signed in,
+   * it also updates the version in Firestore under the user's settings.
+   *
+   * @param {string} version - The Bible version ("nasb", "lsb", or "esv").
+   * @param {object} currentUser - The currently authenticated user.
+   * @param {object} db - Firestore database instance.
+   */
   function saveUserVersion(version, currentUser, db) {
     localStorage.setItem("version", version);
     if (currentUser) {
@@ -62,17 +99,24 @@ export default function PlanComponent() {
     }
   }, [version, currentUser]);
 
-  // Refs for tracking last clicked checkbox (for shift–click) and old settings.
+  // Refs used for:
+  // - Tracking the last checked checkbox (to support shift-click functionality).
+  // - Storing old schedule settings to determine if a new schedule is needed.
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
-  // --- Firebase Auth and Realtime Firestore Sync ---
+  // ----------------------------------------------------------
+  // 5. Firebase Auth and Realtime Firestore Sync
+  // ----------------------------------------------------------
+  // This useEffect sets up an authentication listener.
+  // - If a user is signed in, it sets up a realtime Firestore listener (via onSnapshot) for that user's document.
+  // - If no user is signed in, it loads settings from localStorage.
   useEffect(() => {
     let unsubscribeUserSnapshot;
     const unsubscribeAuth = auth.onAuthStateChanged((user) => {
       if (user) {
         setCurrentUser(user);
-        // Set up a realtime listener for user data.
+        // Set up a realtime listener for user data in Firestore.
         unsubscribeUserSnapshot = loadUserData(user);
       } else {
         setCurrentUser(null);
@@ -80,7 +124,7 @@ export default function PlanComponent() {
       }
     });
 
-    // In case auth state isn't determined quickly, load local settings.
+    // In case the auth state isn't determined quickly, load local settings after a short delay.
     const timeoutId = setTimeout(() => {
       if (!currentUser) {
         loadLocalSettings();
@@ -96,7 +140,12 @@ export default function PlanComponent() {
     };
   }, []);
 
-  // Load settings and progress from localStorage (for unsigned users).
+  /**
+   * loadLocalSettings
+   *
+   * Loads the OT and NT chapter settings and progress map from localStorage.
+   * This is used for users who are not signed in.
+   */
   const loadLocalSettings = () => {
     const storedOT = localStorage.getItem("otChapters");
     const storedNT = localStorage.getItem("ntChapters");
@@ -110,11 +159,19 @@ export default function PlanComponent() {
     if (storedProgress) {
       setProgressMap(JSON.parse(storedProgress));
     }
+    // Generate the reading schedule using the loaded settings.
     updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
   };
 
-  // Load user settings and progress from Firestore with realtime updates.
-  // Returns the unsubscribe function for the listener.
+  /**
+   * loadUserData
+   *
+   * Sets up a realtime Firestore listener on the signed‑in user's document.
+   * When the document changes, it updates local state and localStorage accordingly.
+   *
+   * @param {object} user - The signed-in Firebase user.
+   * @returns {function} The unsubscribe function for the Firestore listener.
+   */
   const loadUserData = (user) => {
     return db
       .collection("users")
@@ -122,6 +179,7 @@ export default function PlanComponent() {
       .onSnapshot((doc) => {
         if (doc.exists) {
           const data = doc.data();
+          // Update OT and NT chapter settings if available.
           if (data.settings) {
             if (data.settings.otChapters) {
               const newOT = String(data.settings.otChapters);
@@ -134,11 +192,12 @@ export default function PlanComponent() {
               localStorage.setItem("ntChapters", newNT);
             }
           }
+          // Update progressMap unconditionally (this covers cases where progress was cleared).
           if (data.progress) {
-            // Update progress unconditionally so that cleared progress is applied.
             setProgressMap(data.progress);
             localStorage.setItem("progressMap", JSON.stringify(data.progress));
           }
+          // Update the reading schedule with the latest settings.
           updateSchedule(
             data.settings && data.settings.otChapters
               ? String(data.settings.otChapters)
@@ -149,12 +208,13 @@ export default function PlanComponent() {
             true
           );
         } else {
-          // If no user document exists, use local progress.
+          // If no user document exists (edge case), use localStorage values.
           const localProgressStr = localStorage.getItem("progressMap");
           const localProgress = localProgressStr
             ? JSON.parse(localProgressStr)
             : {};
           setProgressMap(localProgress);
+          // Create the user document with local progress as a starting point.
           db.collection("users")
             .doc(user.uid)
             .set({ progress: localProgress }, { merge: true });
@@ -163,7 +223,15 @@ export default function PlanComponent() {
       });
   };
 
-  // Save user settings to localStorage and Firestore (if signed in).
+  /**
+   * saveUserSettings
+   *
+   * Saves the OT and NT chapter settings to localStorage.
+   * If the user is signed in, it also updates the settings in Firestore.
+   *
+   * @param {number} ot - Number of OT chapters per day.
+   * @param {number} nt - Number of NT chapters per day.
+   */
   const saveUserSettings = (ot, nt) => {
     localStorage.setItem("otChapters", String(ot));
     localStorage.setItem("ntChapters", String(nt));
@@ -175,17 +243,26 @@ export default function PlanComponent() {
     }
   };
 
-  // --- Schedule and Progress Management ---
-  // Clear progress (and update Firestore if signed in).
+  // ----------------------------------------------------------
+  // 6. Schedule and Progress Management Functions
+  // ----------------------------------------------------------
+
+  /**
+   * clearAllProgress
+   *
+   * Clears the progress state and removes progress-related data from localStorage.
+   * If the user is signed in, it updates Firestore to clear the progress field.
+   */
   const clearAllProgress = () => {
     console.log("Clearing saved progress.");
     setProgressMap({});
     localStorage.removeItem("progressMap");
+    // Remove any individual day checkboxes stored in localStorage.
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem("check-day-" + i);
     }
     if (currentUser) {
-      // Use update() so the entire progress field is replaced with an empty object.
+      // Use update() so that the entire progress field is replaced with an empty object.
       db.collection("users")
         .doc(currentUser.uid)
         .update({ progress: {} })
@@ -195,10 +272,20 @@ export default function PlanComponent() {
     }
   };
 
-  // Update the schedule based on OT and NT chapters per day.
+  /**
+   * updateSchedule
+   *
+   * Generates the reading schedule based on the current OT and NT chapter settings.
+   * If the settings have changed (and it's not just the initial load), it clears the progress.
+   *
+   * @param {string} ot - OT chapters (as a string).
+   * @param {string} nt - NT chapters (as a string).
+   * @param {boolean} fromInit - True if this is the initial load (to avoid clearing progress).
+   */
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
     const otNum = parseInt(ot, 10);
     const ntNum = parseInt(nt, 10);
+    // Validate input values.
     if (
       isNaN(otNum) ||
       otNum < 1 ||
@@ -214,12 +301,14 @@ export default function PlanComponent() {
     }
     saveUserSettings(otNum, ntNum);
 
+    // Calculate total days required based on overall chapters.
     const totalOT = 929;
     const totalNT = 260;
     const otDays = Math.ceil(totalOT / otNum);
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
 
+    // If this is a user‑initiated update (not just initial loading), check if settings changed.
     if (!fromInit) {
       if (
         oldSettingsRef.current.ot !== null &&
@@ -230,12 +319,17 @@ export default function PlanComponent() {
         console.log("Settings unchanged; schedule remains the same.");
         return;
       } else {
+        // Settings have changed, so clear all progress.
         clearAllProgress();
       }
     }
+    // Save the new settings to the ref for later comparison.
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
-    // Bible books arrays.
+    // ----------------------------------------------------------
+    // Generate the Reading Schedule
+    // ----------------------------------------------------------
+    // Define the arrays of Bible books for OT and NT.
     const otBooks = [
       { name: "Gen", chapters: 50 },
       { name: "Exod", chapters: 40 },
@@ -307,7 +401,7 @@ export default function PlanComponent() {
       { name: "Rev", chapters: 22 },
     ];
 
-    // Generate schedule arrays.
+    // Generate individual schedule arrays for OT and NT using the helper function.
     const otSchedule = generateSchedule(
       otBooks,
       otNum,
@@ -321,14 +415,16 @@ export default function PlanComponent() {
       ntDays < totalDays
     );
 
-    // Build the schedule array.
+    // Build a combined schedule array where each day includes OT and NT passages.
     const newSchedule = [];
     for (let day = 1; day <= totalDays; day++) {
       const otText = otSchedule[day - 1];
       const ntText = ntSchedule[day - 1];
+      // Remove extra whitespace for query formatting.
       const otQuery = otText.replace(/\s/g, " ");
       const ntQuery = ntText.replace(/\s/g, " ");
 
+      // Construct the URL based on the selected Bible version.
       let url;
       if (version === "lsb") {
         url = `https://read.lsbible.org/?q=${otQuery}, ${ntQuery}`;
@@ -342,10 +438,22 @@ export default function PlanComponent() {
       newSchedule.push({ day, passages: linkText, url });
     }
 
+    // Update the schedule state.
     setSchedule(newSchedule);
   };
 
-  // Schedule generator.
+  /**
+   * generateSchedule
+   *
+   * Helper function that generates a schedule array for the given books.
+   * It iterates over the books and assigns the specified number of chapters per day.
+   *
+   * @param {Array} books - Array of book objects with name and chapters.
+   * @param {number} chaptersPerDay - Number of chapters to read per day.
+   * @param {number} totalDays - Total number of days in the schedule.
+   * @param {boolean} cycle - Whether to cycle back to the beginning of the books if needed.
+   * @returns {Array} Array of schedule strings for each day.
+   */
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
     let bookIdx = 0,
@@ -354,7 +462,9 @@ export default function PlanComponent() {
       let daily = [];
       let remaining = chaptersPerDay;
       while (remaining > 0) {
+        // If we've exhausted the current list of books...
         if (bookIdx >= books.length) {
+          // If cycling is allowed, restart from the first book.
           if (cycle) {
             bookIdx = 0;
             chapter = 1;
@@ -388,11 +498,16 @@ export default function PlanComponent() {
     return scheduleArr;
   };
 
-  // --- Checkbox and Progress Handling ---
+  // ----------------------------------------------------------
+  // 7. Checkbox and Progress Handling
+  // ----------------------------------------------------------
+  // This section handles updates to the progress map when a user clicks on a day's checkbox.
+  // It supports shift-clicking to check/uncheck a range of days.
   const lastCheckedRef2 = useRef(null);
 
   const handleCheckboxChange = (day, checked, event) => {
     if (event.shiftKey && lastCheckedRef2.current !== null) {
+      // Determine the range (start to end) based on the last checked day.
       const start = Math.min(lastCheckedRef2.current, day);
       const end = Math.max(lastCheckedRef2.current, day);
       const newProgress = { ...progressMap };
@@ -411,6 +526,7 @@ export default function PlanComponent() {
           );
       }
     } else {
+      // Handle a single checkbox update.
       const newProgress = { ...progressMap, [day]: checked };
       localStorage.setItem("check-day-" + day, checked ? "true" : "false");
       setProgressMap(newProgress);
@@ -427,7 +543,10 @@ export default function PlanComponent() {
     lastCheckedRef2.current = day;
   };
 
-  // --- Excel Export ---
+  // ----------------------------------------------------------
+  // 8. Excel Export Functionality
+  // ----------------------------------------------------------
+  // Exports the schedule and progress data to an Excel file.
   const exportToExcel = async () => {
     try {
       const ExcelJS = (await import("exceljs")).default;
@@ -436,12 +555,14 @@ export default function PlanComponent() {
       const header = ["Day", "Passages", "Done"];
       worksheet.addRow(header);
 
+      // Add a row for each day in the schedule.
       schedule.forEach((item) => {
         const done = progressMap[item.day] ? "X" : "";
         const passageCellValue = { text: item.passages, hyperlink: item.url };
         worksheet.addRow([item.day, passageCellValue, done]);
       });
 
+      // Style hyperlink cells.
       worksheet.getColumn(2).eachCell((cell, rowNumber) => {
         if (rowNumber === 1) return;
         if (cell.value && cell.value.hyperlink) {
@@ -449,6 +570,7 @@ export default function PlanComponent() {
         }
       });
 
+      // Auto-size columns.
       let data = [];
       worksheet.eachRow({ includeEmpty: true }, (row) => {
         let rowData = [];
@@ -485,25 +607,46 @@ export default function PlanComponent() {
     }
   };
 
-  // --- Sign Out ---
+  // ----------------------------------------------------------
+  // 9. Sign Out Functionality
+  // ----------------------------------------------------------
+  /**
+   * signOut
+   *
+   * Signs the user out of Firebase authentication.
+   * After sign‑out, it clears localStorage and resets the default values:
+   * - version: "nasb"
+   * - otChapters: "2"
+   * - ntChapters: "1"
+   * - progressMap: {} (cleared)
+   * Then, it routes the user back to the homepage ("/").
+   */
   const signOut = async () => {
     try {
       await auth.signOut();
-      // Reset localStorage to default values.
+      // Reset localStorage completely.
       localStorage.clear();
+      // Set default values to simulate a first‑time visitor.
       localStorage.setItem("version", "nasb");
       localStorage.setItem("otChapters", "2");
       localStorage.setItem("ntChapters", "1");
       localStorage.setItem("progressMap", JSON.stringify({}));
+      // Update component state.
       setCurrentUser(null);
       setProgressMap({});
+      // Redirect to homepage.
       router.push("/");
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
 
-  // --- Render ---
+  // ----------------------------------------------------------
+  // 10. Component Rendering
+  // ----------------------------------------------------------
+  // The component renders a header with sign-in/sign-out links, a dropdown for Bible version,
+  // controls for OT and NT chapters, buttons to generate the schedule and export it to Excel,
+  // and the reading schedule table with checkboxes to track progress.
   return (
     <div className={styles.pageBackground}>
       <Head>
@@ -511,6 +654,7 @@ export default function PlanComponent() {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
 
+      {/* Header section with sign-in information */}
       <div className={styles.header} id="auth-header">
         {currentUser ? (
           <span className="user-info">
@@ -522,8 +666,9 @@ export default function PlanComponent() {
         )}
       </div>
 
+      {/* Main content container */}
       <div className={styles.container} id="main-content">
-        {/* Dropdown in top-right */}
+        {/* Dropdown to change Bible version (top-right corner) */}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <select value={version} onChange={handleVersionChange}>
             <option value="nasb">NASB</option>
@@ -534,6 +679,7 @@ export default function PlanComponent() {
 
         <h1>Bible Reading Planner</h1>
 
+        {/* Controls for setting OT and NT chapters per day, schedule generation, and Excel export */}
         <div className={styles.controls}>
           <label>
             OT chapters/day (929 total):
@@ -565,6 +711,7 @@ export default function PlanComponent() {
         </div>
 
         <br />
+        {/* Reading schedule table */}
         <div className={styles.homeTableWrapper}>
           <table id="scheduleTable" className={styles.scheduleTable}>
             <thead>
