@@ -12,7 +12,7 @@
 
 /* Container for the sign-in form */
 .signinContainer {
-  background-color: rgba(255, 255, 255, 0.94);
+  background-color: rgba(255, 255, 255, 0.95);
   padding: 2rem;
   border-radius: 8px;
   max-width: 400px;
@@ -73,7 +73,7 @@
 }
 .authButtons button {
   padding: 10px;
-  font-size: 16px;
+  font-size: 14px;
   border-radius: 4px;
   cursor: pointer;
   transition: background 0.3s ease, transform 0.3s;
@@ -87,17 +87,11 @@
   color: #fff;
   border:none;
 }
-.signIn:hover {
-  background: var(--hover-color);
-}
+
 .signUp {
   background: #fff;
   color: var(--theme-color);
   border: 1px solid var(--theme-color);
-}
-.signUp:hover {
-  background: var(--theme-color);
-  color: #fff;
 }
 
 /* Google sign-in styling */

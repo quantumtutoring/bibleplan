@@ -3,7 +3,6 @@
 .header a {
   text-decoration: none;
   font-size: 18px;
-
   color: var(--theme-color);
   transition: color 0.3s;
   font-weight:bold;
@@ -35,7 +34,7 @@
 
 /* Main container */
 .container {
-  background-color: rgba(255, 255, 255, 0.94);
+  background-color: rgba(255, 255, 255, 0.95);
   max-width: 600px;
   margin: auto;
   margin-top:140px;
@@ -63,15 +62,13 @@
   font-size: 16px;
   cursor: pointer;
   margin: 5px;
-  border: none;
-  background: var(--theme-color);
-  color: #fff;
+  background: #fff;
+  color: var(--theme-color);
+  border: 1px solid var(--theme-color);
   border-radius: 8px;
   transition: background 0.3s ease, transform 0.3s ease;
 }
-.controls button:hover {
-  background: var(--hover-color);
-}
+
 
 /* Schedule table styling */
 .scheduleTable {
