@@ -349,18 +349,18 @@ export default function PlanComponent() {
     for (let day = 1; day <= totalDays; day++) {
       const otText = otSchedule[day - 1];
       const ntText = ntSchedule[day - 1];
-      const otQuery = otText.replace(/\s/g, "");
-      const ntQuery = ntText.replace(/\s/g, "");
+      const otQuery = otText.replace(/\s/g, " ");
+      const ntQuery = ntText.replace(/\s/g, " ");
 
       // 3) Construct the passage URL based on version:
       let url;
       if (version === "lsb") {
-        url = `https://read.lsbible.org/?q=${otQuery},${ntQuery}`;
+        url = `https://read.lsbible.org/?q=${otQuery}, ${ntQuery}`;
       } else if (version === "esv") {
-        url = `https://esv.literalword.com/?q=${otQuery},${ntQuery}`;
+        url = `https://esv.literalword.com/?q=${otQuery}, ${ntQuery}`;
       } else {
         // default: home
-        url = `https://www.literalword.com/?q=${otQuery},${ntQuery}`;
+        url = `https://www.literalword.com/?q=${otQuery}, ${ntQuery}`;
       }
 
       const linkText = `${otText} | ${ntText}`;
