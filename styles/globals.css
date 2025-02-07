@@ -1,90 +1,114 @@
-/* styles/globals.css */
-
+/* Reset and global variables */
 :root {
-  --theme-color: #21426f; /* Color for links, buttons, column headings, etc. */
+  --theme-color: #21426f; /* primary color */
+  --hover-color: #0056b3; /* for hover states */
+  --accent-color: #e9c46a;
+  --bg-color: #f9f9f9;
+  --text-color: #333;
+  --font-family: 'Open Sans', sans-serif;
 }
 
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
 
+/* Global body styling */
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f9f9f9;
-    color: #333;
-    line-height: 1.5;
-    font-size: 14px;
-  }
+  font-family: var(--font-family);
+  background: var(--bg-color);
+  color: var(--text-color);
+  line-height: 1.6;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
 
-  input[type="checkbox"] {
-    accent-color: #0e60b7;
-  }
-
-  a:hover {
-    color: #0e60b7
-  }
-
-  a:link {
-    color: var(--theme-color);
-  }
-
+/* Links */
+a {
+  color: var(--theme-color);
+  transition: color 0.3s ease;
+}
 a:visited {
-    color: var(--theme-color);
-  }
+  color: var(--theme-color);
+}
+a:hover {
+  color: var(--hover-color);
+}
 
+/* Headings */
+h1, h2 {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 28px;
+}
 
-  h1, h2 {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 28px;
-  }
+/* User info area */
+.user-info {
+  font-size: 14px;
+  color: var(--text-color);
+}
+.user-info button {
+  padding: 6px 12px;
+  font-size: 14px;
+  border: none;
+  background: var(--theme-color);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 10px;
+  transition: background 0.3s ease;
+}
+.user-info button:hover {
+  background: var(--hover-color);
+}
 
-  
-  .user-info {
-    font-size: 14px;
-    color: #333;
-  }
-  .user-info button {
-    padding: 4px 8px;
-    font-size: 14px;
-    border: none;
-    background: var(--theme-color);
-    color: #fff;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-left: 10px;
-    transition: background 0.3s ease;
-  }
-  .user-info button:hover {
-    background: #0056b3;
-  }
+/* Checkbox styling */
+input[type="checkbox"] {
+  vertical-align:middle;
+  accent-color: var(--theme-color);
+}
 
-  * {
-    box-sizing: border-box;
-  }
-  
-  /* Scheduler table styles */
-  table#scheduleTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 15px;
-    background: #fff;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  table#scheduleTable th,
-  table#scheduleTable td {
-    padding: 6px 8px;
-    text-align: center;
-    border-bottom: 1px solid #ddd;
-    font-size: 14px;
-  }
-  
-  table#scheduleTable th {
-    background: --theme-color;
-    color: #fff;
-  }
-  
-  table#scheduleTable tr:hover {
-    background-color: #f1f1f1;
-  }
+/* Scheduler table styles */
+table#scheduleTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border-radius:8px;
+}
+table#scheduleTable th,
+table#scheduleTable td {
+  padding: 10px 12px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+}
+table#scheduleTable th {
+  background: var(--theme-color);
+  color: #fff;
+}
+table#scheduleTable tr:hover {
+  background-color: #f1f1f1;
+}
 
-  
+select {
+  font-family: var(--font-family);
+  text-align:center;
+  font-size: 14px;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor:pointer;
+  appearance: none;
+  background: #fff; /* Removed the custom arrow image */
+  transition: border 0.3s ease;
+}
+
+select:hover{border-color: black;}
+
+select:focus {
+  border-color: var(--theme-color);
+  outline: none;
+}
