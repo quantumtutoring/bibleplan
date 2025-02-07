@@ -12,9 +12,9 @@ export default function Signin() {
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
   const router = useRouter();
+  // This state controls whether we should render the sign‑in form.
+  // It remains false until we've determined that no authenticated user exists.
   const [shouldRender, setShouldRender] = useState(false);
-
-  
 
   // 1. HELPER: Route to version from Firestore and update localStorage progressMap.
   const routeToVersion = async (uid) => {
@@ -42,6 +42,19 @@ export default function Signin() {
     }
   };
 
+  // NEW: Check auth state before rendering. If the user is already authenticated
+  // and verified, redirect immediately. Otherwise, allow the sign‑in page to render.
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user && user.emailVerified) {
+        routeToVersion(user.uid);
+      } else {
+        setShouldRender(true);
+      }
+    });
+    return () => unsubscribe();
+  }, []);
+
   // 2. SIGN IN (Email/Password)
   const handleSignIn = async (e) => {
     e.preventDefault();
@@ -60,7 +73,7 @@ export default function Signin() {
         setMessage("Sign in successful!");
         setMsgType("success");
 
-        // 2.1 - Route them to their saved version (this will also update localStorage).
+        // Route them to their saved version (this will also update localStorage).
         setTimeout(() => {
           routeToVersion(user.uid);
         }, 0);
@@ -137,7 +150,7 @@ export default function Signin() {
       setMessage("Google sign in successful!");
       setMsgType("success");
 
-      // 4.1 - Route them to their saved version (this will also update localStorage).
+      // Route them to their saved version (this will also update localStorage).
       setTimeout(() => {
         routeToVersion(user.uid);
       }, 0);
@@ -173,6 +186,9 @@ export default function Signin() {
       setMsgType("error");
     }
   };
+
+  // Only render the sign‑in form if the auth check has completed and no valid user is signed in.
+  if (!shouldRender) return null;
 
   // RENDER
   return (
