@@ -1,93 +1,95 @@
-/* Header styling */
-
-.header a {
-  text-decoration: none;
-  font-size: 18px;
-  color: var(--theme-color);
-  transition: color 0.3s;
-  font-weight:bold;
-}
-.header a:hover {
-  color: var(--hover-color);
-}
-
-/* Header styling (non-fixed) */
+/* styles/Home.module.css */
 .header {
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 8px 30px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  font-weight: bold;
-  /* Removed position: fixed, top, left, and z-index */
+  padding: 10px 20px;
+  background: #fff;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
-/* Page background for the entire page */
+.header a {
+  text-decoration: none;
+  font-size: 16px;
+}
+
 .pageBackground {
+  /* Point to your image in the public folder */
   background: url("/background.jpg") no-repeat center center fixed;
   background-size: cover;
+
+  /* Ensure it fills the height */
   min-height: 100vh;
+
+  /* If you want to ensure no extra margins/padding */
   margin: 0;
   padding: 0;
 }
 
-/* Main container */
+/* If desired, ensure header and container are transparent or partially transparent
+   so the background image can show through. This depends on your design: */
+
+.header {
+  background-color: rgba(255, 255, 255, 0.9); 
+  font-weight:bold;
+}
 .container {
-  background-color: rgba(255, 255, 255, 0.95);
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+
+.container {
   max-width: 600px;
   margin: auto;
-  margin-top:140px;
-  padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  margin-top: 140px;
+  padding: 5px;
+  border-radius: 4px;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
-
-/* Controls styling */
 .controls {
   text-align: center;
-  margin: 15px 0;
+  margin: 10px 0;
 }
+
 .controls input {
   width: 60px;
-  padding: 6px;
-  font-size: 16px;
+  padding: 4px;
+  font-size: 14px;
   margin: 0 5px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
 }
+
 .controls button {
-  padding: 10px 20px;
-  font-size: 16px;
+  padding: 8px;
+  font-size: 14px;
   cursor: pointer;
   margin: 5px;
-  background: #fff;
-  color: var(--theme-color);
-  border: 1px solid var(--theme-color);
-  border-radius: 8px;
-  transition: background 0.3s ease, transform 0.3s ease;
+  border: none;
+  background: var(--theme-color);
+  color: #fff;
+  border-radius: 4px;
+  transition: background 0.3s ease;
 }
 
+.controls button:hover {
+  background: #0056b3;
+}
 
-/* Schedule table styling */
+/* Local styling for the table using a local class */
 .scheduleTable {
   width: 100%;
-  border-collapse: separate; /* Use separate borders to allow rounding */
-  border-spacing: 0;
-  margin-bottom: 20px;
+  border-collapse: collapse;
+  margin-bottom: 15px;
   background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;  /* Rounded corners for the table */
-  overflow: hidden;    /* Ensure inner cells don't spill outside rounded corners */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
 .scheduleTable th,
 .scheduleTable td {
-  padding: 10px 12px;
+  padding: 6px 8px;
   text-align: center;
   border-bottom: 1px solid #ddd;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .scheduleTable th {
@@ -95,13 +97,8 @@
   color: #fff;
 }
 
-/* Remove bottom border on last row cells for a cleaner rounded bottom */
-.scheduleTable tr:last-child td {
-  border-bottom: none;
-}
-
 .scheduleTable tr:hover {
-  background-color: #f9f9f9;
+  background-color: #f1f1f1;
 }
 
 .checkboxCell {
@@ -109,14 +106,9 @@
   width: 40px;
 }
 
-
-/* Responsive adjustments */
 @media screen and (max-width: 600px) {
   .container, .scheduleTable, .scheduleTable th, .scheduleTable td {
     font-size: 14px;
-    padding: 8px;
+    padding: 6px 8px;
   }
 }
-
-
-
