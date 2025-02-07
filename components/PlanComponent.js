@@ -489,9 +489,15 @@ export default function PlanComponent() {
   const signOut = async () => {
     try {
       await auth.signOut();
+      // Reset localStorage to default values.
+      localStorage.clear();
+      localStorage.setItem("version", "nasb");
+      localStorage.setItem("otChapters", "2");
+      localStorage.setItem("ntChapters", "1");
+      localStorage.setItem("progressMap", JSON.stringify({}));
       setCurrentUser(null);
       setProgressMap({});
-      localStorage.clear();
+      router.push("/");
     } catch (error) {
       console.error("Sign out error:", error);
     }
