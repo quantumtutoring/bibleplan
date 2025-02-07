@@ -1,6 +1,4 @@
-/* styles/Signin.module.css */
-
-/* 1) The full-page background. */
+/* Full-page background styling */
 .pageBackground {
   background: url("/background.jpg") no-repeat center center fixed;
   background-size: cover;
@@ -8,47 +6,30 @@
   margin: 0;
   padding: 0;
   display: flex;
-  align-items: center; /* optional - vertically center */
-  justify-content: center; /* optional - horizontally center */
+  align-items: center;
+  justify-content: center;
 }
 
-/* 2) Container for the sign in form content */
+/* Container for the sign-in form */
 .signinContainer {
-  /* Optionally give the container a nice background, 
-     so text is easier to read on top of the background image. */
-  background-color: rgba(255, 255, 255, 0.9);
+  background-color: rgba(255, 255, 255, 0.94);
   padding: 2rem;
   border-radius: 8px;
   max-width: 400px;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Example form styling, as you already have: */
-.signinForm {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ...the rest of your existing styles... */
-
-
-.signinContainer {
-  max-width: 400px;
-  margin: 80px auto;
-  padding: 30px 40px;
-  border: 1px solid #eaeaea;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  width: 90%;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
   text-align: center;
+  margin: 20px;
+  border: none;
 }
 
 .signinContainer h2 {
   margin-bottom: 20px;
   font-size: 1.75rem;
-  color: #333;
+  color: var(--text-color);
 }
 
+/* Sign-in form layout */
 .signinForm {
   display: flex;
   flex-direction: column;
@@ -56,73 +37,70 @@
   text-align: left;
 }
 
+/* Input group styling */
 .inputGroup {
   display: flex;
   flex-direction: column;
 }
-
 .inputGroup label {
   font-size: 0.9rem;
   color: #555;
   margin-bottom: 5px;
 }
-
 .inputGroup input {
   padding: 10px;
   font-size: 1rem;
   border: 1px solid #ccc;
   border-radius: 4px;
   outline: none;
-  transition: border 0.2s;
+  transition: border-color 0.3s;
 }
-
 .inputGroup input:focus {
   border-color: var(--theme-color);
 }
 
+/* Authentication buttons */
 .authButtons {
   display: flex;
   flex-direction: column;
   gap: 10px;
   margin-top: 15px;
 }
-
 .emailAuth {
   display: flex;
   gap: 10px;
   justify-content: space-between;
 }
-
 .authButtons button {
   padding: 10px;
-  font-size: 14px;
+  font-size: 16px;
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.3s, color 0.3s;
+  transition: background 0.3s ease, transform 0.3s;
   flex: 1;
+
 }
 
+/* Sign in & Sign up button styles */
 .signIn {
   background: var(--theme-color);
   color: #fff;
   border:none;
 }
-
 .signIn:hover {
-  background: #0056b3;
+  background: var(--hover-color);
 }
-
 .signUp {
   background: #fff;
   color: var(--theme-color);
   border: 1px solid var(--theme-color);
 }
-
 .signUp:hover {
   background: var(--theme-color);
   color: #fff;
 }
 
+/* Google sign-in styling */
 .googleSignin {
   background-color: #fff;
   border: 1px solid #dcdcdc;
@@ -137,22 +115,20 @@
   font-size: 1rem;
   transition: background 0.3s;
 }
-
 .googleSignin:hover {
   background-color: #f7f7f7;
 }
-
 .googleSignin img {
   width: 20px;
   height: 20px;
 }
 
+/* Reset password link */
 .resetPassword {
   margin-top: 10px;
   font-size: 0.9rem;
   text-align: center;
 }
-
 .resetPassword button {
   background: none;
   border: none;
@@ -160,30 +136,29 @@
   cursor: pointer;
   text-decoration: underline;
   font-size: 0.9rem;
+  transition: color 0.3s;
 }
-
 .resetPassword button:hover {
-  color: #0056b3;
+  color: var(--hover-color);
 }
 
+/* Additional messaging and navigation */
 .message {
   margin-top: 15px;
   font-size: 0.9rem;
   text-align: center;
 }
-
 .backToHome {
   margin-top: 20px;
   font-size: 0.9rem;
   text-align: center;
 }
-
 .backToHome a {
   color: var(--theme-color);
   text-decoration: none;
+  transition: color 0.3s;
 }
-
 .backToHome a:hover {
   text-decoration: underline;
-  color:#0056b3;
+  color: var(--hover-color);
 }
