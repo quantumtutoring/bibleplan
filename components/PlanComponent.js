@@ -578,7 +578,7 @@ export default function PlanComponent() {
           </label>
           <br />
           <br />
-          <button onClick={() => updateSchedule()}>Update Schedule</button>
+          <button onClick={() => updateSchedule()}>Create Schedule</button>
           <button onClick={exportToExcel}>Export to Excel</button>
         </div>
 
