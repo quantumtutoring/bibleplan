@@ -688,7 +688,7 @@ export default function PlanComponent() {
                       type="checkbox"
                       id={`check-day-${item.day}`}
                       checked={!!progressMap[item.day]}
-                      onClick={(e) =>
+                      onChange={(e) =>
                         handleCheckboxChange(item.day, e.target.checked, e)
                       }
                     />
