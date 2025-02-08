@@ -22,8 +22,11 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 - **Firebase Integration:**  
   Manage user authentication and sync user progress/settings via Firebase.
 
-- **Input Validation:**  
-  Enforces that chapters per day can only be integers between 1 and 100.
+- **Centralized Data Handling:**  
+  A custom hook (`useUserData`) and context (`UserDataContext`) manage Firebase data and reduce redundant reads and writes.
+    
+- **Responsive UI:**  
+  Built with Next.js and CSS modules for a modern, responsive user interface.
 
 ## Technologies
 
@@ -62,26 +65,31 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
    Open http://localhost:3000 in your browser.
 
 ## Project Structure
-```pgsql
-bible-plan/
+```plaintext
+bibleplan/
 ├── components/
-│   └── PlanComponent.js      (Logic and formatting for the Bible Reading Planner pages)
+│   └── PlanComponent.js         # Main component: generates reading schedule and tracks progress.
+├── contexts/
+│   └── UserDataContext.js       # React Context to provide centralized Firebase user data.
+├── hooks/
+│   └── useUserData.js           # Custom hook that sets up Firebase Auth and Firestore listeners.
 ├── lib/
-│   └── firebase.js       (Firebase initialization and configuration)
+│   └── firebase.js              # Firebase initialization and configuration.
 ├── pages/
-│   ├── _app.js           (Global App wrapper, imports global CSS, providers, etc.)
-│   ├── index.js          (Default NASB Bible Reading Planner page)
-│   ├── esv.js            (ESV Bible Reading Planner page)
-│   ├── lsb.js            (LSB Bible Reading Planner page)
-│   └── signin.js         (Sign-in page)
+│   ├── _app.js                  # Custom App component wrapping pages with the UserDataProvider.
+│   ├── index.js                 # Landing page: routes user based on authentication and settings.
+│   ├── lsb.js                   # Page for the LSB Bible version.
+│   ├── nasb.js                  # Page for the NASB Bible version.
+│   ├── esv.js                   # Page for the ESV Bible version.
+│   └── signin.js                # Sign-in page: handles authentication, sign-up, password reset.
 ├── public/
-│   └── favicon.svg       (Favicon)
+│   └── favicon.svg              # Favicon for the app.
 ├── styles/
-│   ├── globals.css       (Global CSS styles)
-│   ├── Home.module.css   (Styles for the index page)
-│   └── Signin.module.css (Styles for the sign-in page)
-├── package.json
-└── README.md
+│   ├── globals.css              # Global CSS styles.
+│   ├── Home.module.css          # CSS module for the PlanComponent/home page.
+│   └── Signin.module.css        # CSS module for the sign‑in page.
+├── package.json                 # Project dependencies and scripts.
+└── README.md                    # This file.
 
 ```
 
