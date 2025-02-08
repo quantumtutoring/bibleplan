@@ -56,7 +56,8 @@
   width: 60px;
   padding: 4px;
   font-size: 14px;
-  margin: 0 5px;
+  margin: 4px;
+  margin-left:6px;
 }
 
 .controls button {
