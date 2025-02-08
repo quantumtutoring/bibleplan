@@ -1,6 +1,13 @@
 // pages/_app.js
 import '../styles/globals.css';
+import { UserDataProvider } from '../contexts/UserDataContext';
 
-export default function MyApp({ Component, pageProps }) {
-  return <Component {...pageProps} />;
+function MyApp({ Component, pageProps }) {
+  return (
+    <UserDataProvider>
+      <Component {...pageProps} />
+    </UserDataProvider>
+  );
 }
+
+export default MyApp;
