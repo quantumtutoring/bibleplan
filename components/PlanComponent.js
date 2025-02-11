@@ -13,10 +13,9 @@
  *   and Excel export.
  * - Provides sign‑out functionality that resets localStorage to default values
  *   (version "nasb", OT chapters "2", NT chapters "1", and cleared progress)
- *   and routes the user to the homepage.
  */
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -34,6 +33,38 @@ export default function PlanComponent() {
       console.log('PlanComponent unmounted');
     };
   }, []);
+
+  // ----------------------------------------------------------
+  // 0. Firestore Operation Counters (reads and writes)
+  // ----------------------------------------------------------
+  const [firestoreReads, setFirestoreReads] = useState(0);
+  const [firestoreWrites, setFirestoreWrites] = useState(0);
+
+  const incrementFirestoreReads = () => {
+    setFirestoreReads((prev) => prev + 1);
+  };
+
+  const incrementFirestoreWrites = () => {
+    setFirestoreWrites((prev) => prev + 1);
+  };
+
+  // Log counter changes to the console.
+  useEffect(() => {
+    console.log(`[PlanComponent] Firestore Reads updated: ${firestoreReads}`);
+  }, [firestoreReads]);
+
+  useEffect(() => {
+    console.log(`[PlanComponent] Firestore Writes updated: ${firestoreWrites}`);
+  }, [firestoreWrites]);
+
+  // Example: count each time new userData is received as a "read" from Firestore.
+  const { currentUser, userData, loading } = useUserDataContext();
+  useEffect(() => {
+    if (userData) {
+      console.log('[PlanComponent] userData received from Firestore (read operation)');
+      incrementFirestoreReads();
+    }
+  }, [userData]);
 
   // ----------------------------------------------------------
   // 1. Determine Bible Version from Router Path
@@ -61,11 +92,6 @@ export default function PlanComponent() {
     }
   };
 
-  // ----------------------------------------------------------
-  // 2. Use Centralized User Data from Context
-  // ----------------------------------------------------------
-  const { currentUser, userData, loading } = useUserDataContext();
-
   // Use a ref to always have the latest currentUser.
   const currentUserRef = useRef(currentUser);
   useEffect(() => {
@@ -73,7 +99,7 @@ export default function PlanComponent() {
   }, [currentUser]);
 
   // ----------------------------------------------------------
-  // 3. Local State Variables
+  // 2. Local State Variables
   // ----------------------------------------------------------
   const [otChapters, setOtChapters] = useState('2');
   const [ntChapters, setNtChapters] = useState('1');
@@ -88,7 +114,7 @@ export default function PlanComponent() {
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
   // ----------------------------------------------------------
-  // 4. Helper Functions
+  // 3. Helper Functions
   // ----------------------------------------------------------
   function saveUserVersion(newVersion, currentUser) {
     const storedVersion = localStorage.getItem('version');
@@ -100,6 +126,7 @@ export default function PlanComponent() {
     localStorage.setItem('version', newVersion);
     if (currentUser) {
       console.log('[PlanComponent] Writing version to Firestore for user:', currentUser.uid);
+      incrementFirestoreWrites();
       db.collection('users')
         .doc(currentUser.uid)
         .set({ settings: { version: newVersion } }, { merge: true })
@@ -117,7 +144,7 @@ export default function PlanComponent() {
   }, [version, currentUser]);
 
   // ----------------------------------------------------------
-  // 5. Synchronize Data from Centralized Context or Local Storage
+  // 4. Synchronize Data from Centralized Context or Local Storage
   // ----------------------------------------------------------
   useEffect(() => {
     if (userData && userData.settings) {
@@ -177,6 +204,7 @@ export default function PlanComponent() {
     localStorage.setItem('ntChapters', String(nt));
     if (currentUser) {
       console.log('[PlanComponent] Writing settings to Firestore for user:', currentUser.uid);
+      incrementFirestoreWrites();
       db.collection('users')
         .doc(currentUser.uid)
         .set({ settings: { otChapters: ot, ntChapters: nt } }, { merge: true })
@@ -194,6 +222,7 @@ export default function PlanComponent() {
     }
     if (currentUser) {
       console.log('[PlanComponent] Clearing progress in Firestore for user:', currentUser.uid);
+      incrementFirestoreWrites();
       db.collection('users')
         .doc(currentUser.uid)
         .update({ progress: {} })
@@ -340,7 +369,8 @@ export default function PlanComponent() {
 
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
-    let bookIdx = 0, chapter = 1;
+    let bookIdx = 0,
+      chapter = 1;
     for (let day = 1; day <= totalDays; day++) {
       let daily = [];
       let remaining = chaptersPerDay;
@@ -380,7 +410,7 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 6. Checkbox and Progress Handling (using lodash.debounce)
+  // 5. Checkbox and Progress Handling (using lodash.debounce)
   // ----------------------------------------------------------
   const lastCheckedRef2 = useRef(null);
 
@@ -390,6 +420,7 @@ export default function PlanComponent() {
     debouncedSaveRef.current = debounce((newProgress) => {
       if (currentUserRef.current) {
         console.log('[PlanComponent] Writing batched progress to Firestore');
+        incrementFirestoreWrites();
         db.collection('users')
           .doc(currentUserRef.current.uid)
           .set({ progress: newProgress }, { merge: true })
@@ -402,7 +433,7 @@ export default function PlanComponent() {
             console.error('[PlanComponent] Error saving progress:', error)
           );
       }
-    }, 2000);
+    }, 1000);
     return () => {
       debouncedSaveRef.current.cancel();
     };
@@ -434,7 +465,7 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 7. Excel Export Functionality
+  // 6. Excel Export Functionality
   // ----------------------------------------------------------
   const exportToExcel = async () => {
     try {
@@ -492,7 +523,7 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 8. Sign Out Functionality
+  // 7. Sign Out Functionality
   // ----------------------------------------------------------
   const signOut = async () => {
     try {
@@ -511,7 +542,7 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 9. Component Rendering
+  // 8. Component Rendering
   // ----------------------------------------------------------
   return (
     <div className={styles.pageBackground}>
@@ -519,18 +550,28 @@ export default function PlanComponent() {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
+      {/* 
+          Make the header fixed so that it stays visible during scroll.
+          (You may want to adjust the background and height in your CSS as needed.)
+      */}
       <div className={styles.header} id="auth-header">
         {currentUser ? (
           <div>
             <span className={syncPending ? styles.emailPending : styles.emailSynced}>
               {currentUser.email}
             </span>
-            <button onClick={signOut}>Sign Out</button>
+            {/* The read/write counters have been removed from the UI.
+                Their values are now logged to the console. */}
+<button onClick={signOut} className={`${styles.button} ${styles.signoutButton}`}>
+  Sign Out
+</button>
+
           </div>
         ) : (
           <Link href="/signin">Sign in</Link>
         )}
       </div>
+
       <div className={styles.container} id="main-content">
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
           <select value={version} onChange={handleVersionChange}>

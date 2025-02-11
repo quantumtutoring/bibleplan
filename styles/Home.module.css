@@ -3,7 +3,8 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 10px 20px;
+  padding: 0px;
+  height: 40px;
   background: #fff;
   box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
@@ -28,17 +29,13 @@
 
 /* If desired, ensure header and container are transparent or partially transparent
    so the background image can show through. This depends on your design: */
-
 .header {
   background-color: rgba(255, 255, 255, 0.9); 
-  font-weight:bold;
+  font-weight: bold;
 }
+
 .container {
   background-color: rgba(255, 255, 255, 0.9);
-}
-
-
-.container {
   max-width: 600px;
   margin: auto;
   margin-top: 140px;
@@ -57,10 +54,12 @@
   padding: 4px;
   font-size: 14px;
   margin: 4px;
-  margin-left:6px;
+  margin-left: 6px;
 }
 
-.controls button {
+/* Apply the same styling to both controls buttons and standalone buttons */
+.controls button,
+.button {
   padding: 8px;
   font-size: 14px;
   cursor: pointer;
@@ -72,8 +71,28 @@
   transition: background 0.3s ease;
 }
 
-.controls button:hover {
+.controls button:hover,
+.button:hover {
   background: #0056b3;
+}
+
+/* Additional styling for the sign-out button:
+   - Narrower vertical padding (5px top and bottom)
+   - White background
+   - Gray border
+   - Darker text for contrast */
+.signoutButton {
+  padding: 5px 8px;
+  background: #fff;
+  border-radius: 4px;
+  transition: background 0.3s ease;
+  color: var(--theme-color);
+  border: 1px solid var(--theme-color);
+}
+
+.signoutButton:hover {
+    background: var(--theme-color);
+    color: #fff;
 }
 
 /* Local styling for the table using a local class */
@@ -114,13 +133,12 @@
   }
 }
 
-
 .emailPending {
-  color: red;    margin-right: 10px;
-
+  color: gray;
+  margin-right: 10px;
 }
 
 .emailSynced {
-  color: green;    margin-right: 10px;
-
+  color: var(--theme-color);
+  margin-right: 10px;
 }
