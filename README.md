@@ -103,7 +103,7 @@ bibleplan/
    Click "Update Schedule" to generate a new Bible reading plan. If the settings have changed, the app clears the stored progress.
 
 3. **Mark Progress:**  
-   Check the boxes for each day as you complete the readings. Use shift‑click to mark multiple days at once.
+   Check the checkboxes for each day as you complete the readings. Use shift‑click to mark multiple days at once.
 
 4. **Export to Excel:**  
    Click "Export to Excel" to download your reading schedule and progress in an Excel file.
