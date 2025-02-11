@@ -1,26 +1,28 @@
 // contexts/UserDataContext.js
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import useUserData from '../hooks/useUserData';
 
-// Create a context with default values.
 const UserDataContext = createContext({
   currentUser: null,
   userData: null,
   loading: true,
 });
 
-// Provider component that wraps its children with the UserDataContext.
 export function UserDataProvider({ children }) {
   const { currentUser, userData, loading } = useUserData();
 
+  const contextValue = useMemo(
+    () => ({ currentUser, userData, loading }),
+    [currentUser, userData, loading]
+  );
+
   return (
-    <UserDataContext.Provider value={{ currentUser, userData, loading }}>
+    <UserDataContext.Provider value={contextValue}>
       {children}
     </UserDataContext.Provider>
   );
 }
 
-// Custom hook to use the UserDataContext in any component.
 export function useUserDataContext() {
   return useContext(UserDataContext);
 }
