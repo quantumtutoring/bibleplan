@@ -16,17 +16,31 @@
  *   and routes the user to the homepage.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 import { saveAs } from 'file-saver';
-import Image from 'next/image';
 import { auth, db } from '../lib/firebase';
 import { useUserDataContext } from '../contexts/UserDataContext';
+import debounce from 'lodash.debounce';
 
 export default function PlanComponent() {
+
+//COUNT THE MOUNTS!
+  const mountCountRef = useRef(0);
+
+  useEffect(() => {
+    mountCountRef.current += 1;
+    console.log('PlanComponent mounted, count:', mountCountRef.current);
+    return () => {
+      console.log('PlanComponent unmounted');
+    };
+  }, []);
+  
+
+  
   // ----------------------------------------------------------
   // 1. Determine Bible Version from Router Path
   // ----------------------------------------------------------
@@ -39,11 +53,7 @@ export default function PlanComponent() {
     version = 'esv';
   }
 
-  // ----------------------------------------------------------
-  // 1.1. Handle Version Change
-  // ----------------------------------------------------------
-  // Updates the Bible version in localStorage and Firestore (if signed in)
-  // and then routes the user to the appropriate version page.
+  // Handle version change
   const handleVersionChange = (e) => {
     const newVal = e.target.value; // "nasb", "lsb", or "esv"
     console.log('[PlanComponent] Changing version to:', newVal);
@@ -60,8 +70,13 @@ export default function PlanComponent() {
   // ----------------------------------------------------------
   // 2. Use Centralized User Data from Context
   // ----------------------------------------------------------
-  // Our centralized context provides currentUser, userData, and loading status.
   const { currentUser, userData, loading } = useUserDataContext();
+
+  // Use a ref to always have the latest currentUser without re-creating our debounced function.
+  const currentUserRef = useRef(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   // ----------------------------------------------------------
   // 3. Local State Variables
@@ -71,7 +86,7 @@ export default function PlanComponent() {
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
 
-  // Refs for avoiding redundant schedule writes and handling shift-click.
+  // Refs for avoiding redundant schedule writes and handling shift‑click.
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
@@ -79,14 +94,7 @@ export default function PlanComponent() {
   // 4. Helper Functions
   // ----------------------------------------------------------
 
-  /**
-   * saveUserVersion
-   *
-   * Saves the selected Bible version to localStorage.
-   * If a user is signed in and the version has changed, updates the version in Firestore.
-   */
   function saveUserVersion(newVersion, currentUser) {
-    // Check if the version is already saved in localStorage.
     const storedVersion = localStorage.getItem('version');
     if (storedVersion === newVersion) {
       console.log('[PlanComponent] Version unchanged; skipping Firestore write');
@@ -106,7 +114,6 @@ export default function PlanComponent() {
     }
   }
 
-  // Save the Bible version whenever it changes or currentUser updates.
   useEffect(() => {
     if (version) {
       saveUserVersion(version, currentUser);
@@ -116,7 +123,6 @@ export default function PlanComponent() {
   // ----------------------------------------------------------
   // 5. Synchronize Data from Centralized Context or Local Storage
   // ----------------------------------------------------------
-  // When userData updates (from Firestore), update local state.
   useEffect(() => {
     if (userData && userData.settings) {
       if (userData.settings.otChapters) {
@@ -148,7 +154,6 @@ export default function PlanComponent() {
     );
   }, [userData]);
 
-  // For guest users (no currentUser), load settings from localStorage.
   useEffect(() => {
     if (!currentUser && !loading) {
       const storedOT = localStorage.getItem('otChapters');
@@ -170,12 +175,6 @@ export default function PlanComponent() {
     }
   }, [currentUser, loading]);
 
-  /**
-   * saveUserSettings
-   *
-   * Saves OT and NT chapter settings to localStorage.
-   * If the user is signed in, updates the Firestore document as well.
-   */
   const saveUserSettings = (ot, nt) => {
     console.log('[PlanComponent] Saving user settings:', ot, nt);
     localStorage.setItem('otChapters', String(ot));
@@ -190,11 +189,6 @@ export default function PlanComponent() {
     }
   };
 
-  /**
-   * clearAllProgress
-   *
-   * Clears progress data locally and in Firestore.
-   */
   const clearAllProgress = () => {
     console.log('[PlanComponent] Clearing all progress.');
     setProgressMap({});
@@ -214,16 +208,6 @@ export default function PlanComponent() {
     }
   };
 
-  /**
-   * updateSchedule
-   *
-   * Generates the reading schedule based on OT and NT settings.
-   * Checks whether the settings have changed to avoid unnecessary writes.
-   *
-   * @param {string} ot - OT chapters as a string.
-   * @param {string} nt - NT chapters as a string.
-   * @param {boolean} fromInit - True if this call is during initialization.
-   */
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
     console.log('[PlanComponent] updateSchedule called with OT:', ot, 'NT:', nt, 'fromInit:', fromInit);
     const otNum = parseInt(ot, 10);
@@ -247,7 +231,6 @@ export default function PlanComponent() {
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
 
-    // Only update if settings have changed.
     if (
       oldSettingsRef.current.ot === otNum &&
       oldSettingsRef.current.nt === ntNum &&
@@ -264,8 +247,6 @@ export default function PlanComponent() {
       clearAllProgress();
     }
 
-    // Define arrays of Bible books for OT and NT.
-    // (Add the full arrays as needed.)
     const otBooks = [
       { name: "Gen", chapters: 50 },
       { name: "Exod", chapters: 40 },
@@ -306,9 +287,6 @@ export default function PlanComponent() {
       { name: "Hag", chapters: 2 },
       { name: "Zech", chapters: 14 },
       { name: "Mal", chapters: 4 },
-      { name: 'Gen', chapters: 50 },
-      { name: 'Exod', chapters: 40 },
-      // ... add remaining OT books ...
     ];
     const ntBooks = [
       { name: "Matt", chapters: 28 },
@@ -338,9 +316,6 @@ export default function PlanComponent() {
       { name: "3 John", chapters: 1 },
       { name: "Jude", chapters: 1 },
       { name: "Rev", chapters: 22 },
-      { name: 'Matt', chapters: 28 },
-      { name: 'Mark', chapters: 16 },
-      // ... add remaining NT books ...
     ];
 
     const otSchedule = generateSchedule(otBooks, otNum, totalDays, otDays < totalDays);
@@ -367,11 +342,6 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
   };
 
-  /**
-   * generateSchedule
-   *
-   * Helper that generates a schedule array for a set of books.
-   */
   const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
     let scheduleArr = [];
     let bookIdx = 0, chapter = 1;
@@ -414,44 +384,48 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 6. Checkbox and Progress Handling
+  // 6. Checkbox and Progress Handling (using lodash.debounce)
   // ----------------------------------------------------------
   const lastCheckedRef2 = useRef(null);
-  const [debouncedSave] = useState(() => {
-    let timeout;
-    return (newProgress) => {
-      if (timeout) clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        if (currentUser) {
-          console.log('[PlanComponent] Writing batched progress to Firestore');
-          db.collection('users')
-            .doc(currentUser.uid)
-            .set({ progress: newProgress }, { merge: true })
-            .catch((error) => console.error('[PlanComponent] Error saving progress:', error));
-        }
-      }, 2000);  // Only save to Firestore after 2 seconds of no changes
-    };
-  });
 
-const handleCheckboxChange = (day, checked, event) => {
+  // Create the debounced save function only once.
+  const debouncedSaveRef = useRef(null);
+  useEffect(() => {
+    debouncedSaveRef.current = debounce((newProgress) => {
+      if (currentUserRef.current) {
+        console.log('[PlanComponent] Writing batched progress to Firestore');
+        db.collection('users')
+          .doc(currentUserRef.current.uid)
+          .set({ progress: newProgress }, { merge: true })
+          .catch((error) =>
+            console.error('[PlanComponent] Error saving progress:', error)
+          );
+      }
+    }, 1000);
+    return () => {
+      debouncedSaveRef.current.cancel();
+    };
+  }, []);
+
+  const handleCheckboxChange = (day, checked, event) => {
     console.log(`[PlanComponent] Checkbox changed for day ${day} to ${checked}`);
+    let newProgress;
     if (event.shiftKey && lastCheckedRef2.current !== null) {
       const start = Math.min(lastCheckedRef2.current, day);
       const end = Math.max(lastCheckedRef2.current, day);
-      const newProgress = { ...progressMap };
+      newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
         localStorage.setItem('check-day-' + i, checked ? 'true' : 'false');
       }
-      setProgressMap(newProgress);
-      localStorage.setItem('progressMap', JSON.stringify(newProgress));
-      if (currentUser) debouncedSave(newProgress);
     } else {
-      const newProgress = { ...progressMap, [day]: checked };
+      newProgress = { ...progressMap, [day]: checked };
       localStorage.setItem('check-day-' + day, checked ? 'true' : 'false');
-      setProgressMap(newProgress);
-      localStorage.setItem('progressMap', JSON.stringify(newProgress));
-      if (currentUser) debouncedSave(newProgress);
+    }
+    setProgressMap(newProgress);
+    localStorage.setItem('progressMap', JSON.stringify(newProgress));
+    if (currentUserRef.current && debouncedSaveRef.current) {
+      debouncedSaveRef.current(newProgress);
     }
     lastCheckedRef2.current = day;
   };
@@ -554,7 +528,6 @@ const handleCheckboxChange = (day, checked, event) => {
       </div>
       <div className={styles.container} id="main-content">
         <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          {/* Dropdown to change Bible version */}
           <select value={version} onChange={handleVersionChange}>
             <option value="nasb">NASB</option>
             <option value="lsb">LSB</option>
@@ -616,9 +589,7 @@ const handleCheckboxChange = (day, checked, event) => {
                       type="checkbox"
                       id={`check-day-${item.day}`}
                       checked={!!progressMap[item.day]}
-                      onChange={(e) =>
-                        handleCheckboxChange(item.day, e.target.checked, e)
-                      }
+                      onChange={(e) => handleCheckboxChange(item.day, e.target.checked, e)}
                     />
                   </td>
                 </tr>
