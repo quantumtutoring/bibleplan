@@ -45,7 +45,11 @@ export default function PlanComponent() {
   };
 
   const incrementFirestoreWrites = () => {
-    setFirestoreWrites((prev) => prev + 1);
+    setFirestoreWrites((prev) => {
+      const newVal = prev + 1;
+      console.log(`[PlanComponent] incrementFirestoreWrites: ${newVal}`);
+      return newVal;
+    });
   };
 
   // Log counter changes to the console.
@@ -61,7 +65,7 @@ export default function PlanComponent() {
   const { currentUser, userData, loading } = useUserDataContext();
   useEffect(() => {
     if (userData) {
-      console.log('[PlanComponent] userData received from Firestore (read operation)');
+      console.log('[PlanComponent] userData from Firestore (read operation)');
       incrementFirestoreReads();
     }
   }, [userData]);
@@ -419,14 +423,15 @@ export default function PlanComponent() {
   useEffect(() => {
     debouncedSaveRef.current = debounce((newProgress) => {
       if (currentUserRef.current) {
-        console.log('[PlanComponent] Writing batched progress to Firestore');
-        incrementFirestoreWrites();
+        console.log('[PlanComponent] Debounced function triggered. About to write progress:', newProgress);
+        // Log right before incrementing the write counter.
+        console.log('[PlanComponent] Calling incrementFirestoreWrites()');
+        incrementFirestoreWrites(); // This should update the write counter.
         db.collection('users')
           .doc(currentUserRef.current.uid)
           .set({ progress: newProgress }, { merge: true })
           .then(() => {
             console.log('[PlanComponent] Progress write successful');
-            // Mark the sync as complete.
             setSyncPending(false);
           })
           .catch((error) =>
@@ -434,6 +439,7 @@ export default function PlanComponent() {
           );
       }
     }, 1000);
+    
     return () => {
       debouncedSaveRef.current.cancel();
     };
@@ -550,22 +556,15 @@ export default function PlanComponent() {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
-      {/* 
-          Make the header fixed so that it stays visible during scroll.
-          (You may want to adjust the background and height in your CSS as needed.)
-      */}
       <div className={styles.header} id="auth-header">
         {currentUser ? (
           <div>
             <span className={syncPending ? styles.emailPending : styles.emailSynced}>
               {currentUser.email}
             </span>
-            {/* The read/write counters have been removed from the UI.
-                Their values are now logged to the console. */}
-<button onClick={signOut} className={`${styles.button} ${styles.signoutButton}`}>
-  Sign Out
-</button>
-
+            <button onClick={signOut} className={`${styles.button} ${styles.signoutButton}`}>
+              Sign Out
+            </button>
           </div>
         ) : (
           <Link href="/signin">Sign in</Link>
@@ -635,7 +634,7 @@ export default function PlanComponent() {
                       type="checkbox"
                       id={`check-day-${item.day}`}
                       checked={!!progressMap[item.day]}
-                      onChange={(e) => handleCheckboxChange(item.day, e.target.checked, e)}
+                      onClick={(e) => handleCheckboxChange(item.day, e.target.checked, e)} //use onClick instead of onChange for shift-click
                     />
                   </td>
                 </tr>
