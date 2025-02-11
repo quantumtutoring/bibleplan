@@ -6,13 +6,13 @@
  *
  * Key functionalities:
  * - Determines the Bible version (NASB, LSB, ESV) from the current route.
- * - Loads user settings and progress either from Firestore (for signed‑in users) 
+ * - Loads user settings and progress either from Firestore (for signed‑in users)
  *   via the centralized UserDataContext or from localStorage (for guests).
  * - Creates a reading schedule based on OT and NT chapter settings.
- * - Handles user interactions such as checkbox progress updates, schedule generation, 
+ * - Handles user interactions such as checkbox progress updates, schedule generation,
  *   and Excel export.
- * - Provides sign‑out functionality that resets localStorage to default values 
- *   (version "nasb", OT chapters "2", NT chapters "1", and cleared progress) 
+ * - Provides sign‑out functionality that resets localStorage to default values
+ *   (version "nasb", OT chapters "2", NT chapters "1", and cleared progress)
  *   and routes the user to the homepage.
  */
 
@@ -27,20 +27,14 @@ import { useUserDataContext } from '../contexts/UserDataContext';
 import debounce from 'lodash.debounce';
 
 export default function PlanComponent() {
-
-//COUNT THE MOUNTS!
-  const mountCountRef = useRef(0);
-
+  // Log mount/unmount for debugging.
   useEffect(() => {
-    mountCountRef.current += 1;
-    console.log('PlanComponent mounted, count:', mountCountRef.current);
+    console.log('PlanComponent mounted');
     return () => {
       console.log('PlanComponent unmounted');
     };
   }, []);
-  
 
-  
   // ----------------------------------------------------------
   // 1. Determine Bible Version from Router Path
   // ----------------------------------------------------------
@@ -72,7 +66,7 @@ export default function PlanComponent() {
   // ----------------------------------------------------------
   const { currentUser, userData, loading } = useUserDataContext();
 
-  // Use a ref to always have the latest currentUser without re-creating our debounced function.
+  // Use a ref to always have the latest currentUser.
   const currentUserRef = useRef(currentUser);
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -86,6 +80,9 @@ export default function PlanComponent() {
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
 
+  // New state: syncPending indicates whether local changes are pending sync.
+  const [syncPending, setSyncPending] = useState(false);
+
   // Refs for avoiding redundant schedule writes and handling shift‑click.
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
@@ -93,7 +90,6 @@ export default function PlanComponent() {
   // ----------------------------------------------------------
   // 4. Helper Functions
   // ----------------------------------------------------------
-
   function saveUserVersion(newVersion, currentUser) {
     const storedVersion = localStorage.getItem('version');
     if (storedVersion === newVersion) {
@@ -397,11 +393,16 @@ export default function PlanComponent() {
         db.collection('users')
           .doc(currentUserRef.current.uid)
           .set({ progress: newProgress }, { merge: true })
+          .then(() => {
+            console.log('[PlanComponent] Progress write successful');
+            // Mark the sync as complete.
+            setSyncPending(false);
+          })
           .catch((error) =>
             console.error('[PlanComponent] Error saving progress:', error)
           );
       }
-    }, 1000);
+    }, 2000);
     return () => {
       debouncedSaveRef.current.cancel();
     };
@@ -424,6 +425,8 @@ export default function PlanComponent() {
     }
     setProgressMap(newProgress);
     localStorage.setItem('progressMap', JSON.stringify(newProgress));
+    // Mark as pending sync immediately.
+    setSyncPending(true);
     if (currentUserRef.current && debouncedSaveRef.current) {
       debouncedSaveRef.current(newProgress);
     }
@@ -518,10 +521,12 @@ export default function PlanComponent() {
       </Head>
       <div className={styles.header} id="auth-header">
         {currentUser ? (
-          <span className="user-info">
-            {currentUser.email}{' '}
+          <div>
+            <span className={syncPending ? styles.emailPending : styles.emailSynced}>
+              {currentUser.email}
+            </span>
             <button onClick={signOut}>Sign Out</button>
-          </span>
+          </div>
         ) : (
           <Link href="/signin">Sign in</Link>
         )}

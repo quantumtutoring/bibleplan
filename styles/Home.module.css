@@ -113,3 +113,14 @@
     padding: 6px 8px;
   }
 }
+
+
+.emailPending {
+  color: red;    margin-right: 10px;
+
+}
+
+.emailSynced {
+  color: green;    margin-right: 10px;
+
+}
