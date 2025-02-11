@@ -417,7 +417,23 @@ export default function PlanComponent() {
   // 6. Checkbox and Progress Handling
   // ----------------------------------------------------------
   const lastCheckedRef2 = useRef(null);
-  const handleCheckboxChange = (day, checked, event) => {
+  const [debouncedSave] = useState(() => {
+    let timeout;
+    return (newProgress) => {
+      if (timeout) clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        if (currentUser) {
+          console.log('[PlanComponent] Writing batched progress to Firestore');
+          db.collection('users')
+            .doc(currentUser.uid)
+            .set({ progress: newProgress }, { merge: true })
+            .catch((error) => console.error('[PlanComponent] Error saving progress:', error));
+        }
+      }, 2000);  // Only save to Firestore after 2 seconds of no changes
+    };
+  });
+
+const handleCheckboxChange = (day, checked, event) => {
     console.log(`[PlanComponent] Checkbox changed for day ${day} to ${checked}`);
     if (event.shiftKey && lastCheckedRef2.current !== null) {
       const start = Math.min(lastCheckedRef2.current, day);
@@ -429,27 +445,13 @@ export default function PlanComponent() {
       }
       setProgressMap(newProgress);
       localStorage.setItem('progressMap', JSON.stringify(newProgress));
-      if (currentUser) {
-        console.log('[PlanComponent] Writing aggregated progress for days', start, 'to', end, 'to Firestore for user:', currentUser.uid);
-        db.collection('users')
-          .doc(currentUser.uid)
-          .set({ progress: newProgress }, { merge: true })
-          .then(() => console.log('[PlanComponent] Aggregated progress write successful'))
-          .catch((error) => console.error('[PlanComponent] Error saving progress:', error));
-      }
+      if (currentUser) debouncedSave(newProgress);
     } else {
       const newProgress = { ...progressMap, [day]: checked };
       localStorage.setItem('check-day-' + day, checked ? 'true' : 'false');
       setProgressMap(newProgress);
       localStorage.setItem('progressMap', JSON.stringify(newProgress));
-      if (currentUser) {
-        console.log(`[PlanComponent] Writing progress for day ${day} to Firestore for user:`, currentUser.uid);
-        db.collection('users')
-          .doc(currentUser.uid)
-          .set({ progress: newProgress }, { merge: true })
-          .then(() => console.log('[PlanComponent] Progress write successful'))
-          .catch((error) => console.error('[PlanComponent] Error saving progress:', error));
-      }
+      if (currentUser) debouncedSave(newProgress);
     }
     lastCheckedRef2.current = day;
   };
