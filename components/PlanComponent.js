@@ -203,10 +203,10 @@ export default function PlanComponent() {
   /**
    * updateSchedule:
    *
-   * For custom schedules, this function now always strips out URL fields
-   * before writing to Firestore. Locally, however, it stores the full schedule (with URLs)
-   * so that the UI can display links. When retrieving from Firestore, the URL fields will be
-   * generated dynamically.
+   * For custom schedules, we generate two versions:
+   * - A full custom schedule with URLs for local use.
+   * - A stripped custom schedule (without URL fields) for Firestore.
+   * For default schedules, the link text now uses a comma instead of a pipe.
    */
   const updateSchedule = (
     scheduleOrOt,
@@ -230,7 +230,7 @@ export default function PlanComponent() {
         }
         return { ...item, url: newUrl };
       });
-      // Create a stripped version (without URL) for Firestore.
+      // Create a stripped version (without URL fields) for Firestore.
       const strippedCustomSchedule = fullCustomSchedule.map(({ day, passages }) => ({
         day,
         passages,
@@ -313,7 +313,8 @@ export default function PlanComponent() {
       } else {
         url = `https://www.literalword.com/?q=${encodeURIComponent(otText)}, ${encodeURIComponent(ntText)}`;
       }
-      const linkText = `${otText} | ${ntText}`;
+      // Use a comma separator for default schedule display.
+      const linkText = `${otText}, ${ntText}`;
       newSchedule.push({ day, passages: linkText, url });
     }
     setIsCustomSchedule(false);

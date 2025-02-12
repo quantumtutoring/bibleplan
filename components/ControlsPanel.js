@@ -52,6 +52,29 @@ const ControlsPanel = ({
     }
   };
 
+  // Helper function to format a Bible reference:
+  // - Inserts a space after commas/semicolons if missing.
+  // - Inserts a space between a sequence of letters and the following digits (and vice-versa).
+  // - Converts each word to title case.
+  const formatBibleReference = (str) => {
+    if (!str) return "";
+    let formatted = str.trim();
+    // Insert a space after commas or semicolons if missing.
+    formatted = formatted.replace(/([,;])(?!\s)/g, "$1 ");
+    // Insert a space between letters and following digits.
+    formatted = formatted.replace(/([A-Za-z]+)(\d+)/g, "$1 $2");
+    // Insert a space between digits and following letters.
+    formatted = formatted.replace(/(\d+)([A-Za-z]+)/g, "$1 $2");
+    // Split into words and convert each to title case.
+    formatted = formatted.split(/\s+/).map(word => {
+      if (word.length > 0) {
+        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+      }
+      return word;
+    }).join(" ");
+    return formatted;
+  };
+
   const handleCreateSchedule = () => {
     if (isCustomSchedule) {
       // Build a custom schedule from the textarea input using the current version.
@@ -67,15 +90,17 @@ const ControlsPanel = ({
       }
       
       const customScheduleArr = lines.map((line, index) => {
+        // Format the line as a Bible reference.
+        const formattedLine = formatBibleReference(line);
         let url;
         if (version === 'lsb') {
-          url = `https://read.lsbible.org/?q=${encodeURIComponent(line)}`;
+          url = `https://read.lsbible.org/?q=${encodeURIComponent(formattedLine)}`;
         } else if (version === 'esv') {
-          url = `https://esv.literalword.com/?q=${encodeURIComponent(line)}`;
+          url = `https://esv.literalword.com/?q=${encodeURIComponent(formattedLine)}`;
         } else {
-          url = `https://www.literalword.com/?q=${encodeURIComponent(line)}`;
+          url = `https://www.literalword.com/?q=${encodeURIComponent(formattedLine)}`;
         }
-        return { day: index + 1, passages: line, url };
+        return { day: index + 1, passages: formattedLine, url };
       });
       // Creating a new custom schedule clears its progress.
       updateSchedule(customScheduleArr, undefined, false, false, true);
@@ -137,8 +162,14 @@ const ControlsPanel = ({
             {isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}
           </button>
           <button onClick={toggleCustomizeMode}>
-            {isCustomSchedule ? 'Back to Default' : 'Custom Planner'}
+            {isCustomSchedule ? 'Default Planner' : 'Custom Planner'}
           </button>
+          {/* Render Export to Excel button only in custom mode */}
+          {isCustomSchedule && (
+            <button onClick={exportToExcel}>
+              Export to Excel
+            </button>
+          )}
         </div>
       </div>
     </div>

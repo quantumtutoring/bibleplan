@@ -83,7 +83,7 @@
 }
 
 .customTextArea {
-  margin-bottom: 5px;
+  margin-bottom: 10px;
   margin-top: 10px;
 
   width: 80%;
@@ -123,6 +123,7 @@
   margin-bottom: 15px;
   background: #fff;
   box-shadow: var(--box-shadow);
+/*  text-transform: capitalize; */
 }
 
 .scheduleTable th,
