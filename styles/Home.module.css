@@ -60,6 +60,9 @@
   margin-left: 6px;
 }
 
+.setChapters 
+{margin-bottom:25px;}
+
 /* Shared Button Styles */
 .controls button,
 .button {
@@ -79,6 +82,21 @@
   background: #0056b3;
 }
 
+.customTextArea {
+  margin-bottom: 5px;
+  margin-top: 10px;
+
+  width: 80%;
+  min-height: 80px;
+  resize: none;
+  overflow: hidden;
+  font-size: 14px;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+
 /* Sign-out Button */
 .signoutButton {
   padding: 4px 8px;
@@ -87,6 +105,8 @@
   transition: background 0.3s ease;
   color: var(--theme-color);
   border: 1px solid var(--theme-color);
+  margin-left:10px;
+  margin-right:0px;
 }
 
 .signoutButton:hover {

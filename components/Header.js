@@ -7,15 +7,16 @@ import styles from '../styles/Home.module.css';
  * Header Component
  *
  * Renders the authentication header. If a user is signed in,
- * displays the user's email and a "Sign Out" button; otherwise,
- * shows a "Sign in" link.
+ * displays the user's email, an "Export to Excel" button, and a "Sign Out" button;
+ * otherwise, shows a "Sign in" link.
  *
  * @param {object} props
  * @param {object} props.currentUser - The current signed-in user (or null).
  * @param {boolean} props.syncPending - Indicates if local changes are pending sync.
  * @param {function} props.signOut - Function to sign out the user.
+ * @param {function} props.exportToExcel - Function to export the schedule to Excel.
  */
-const Header = ({ currentUser, syncPending, signOut }) => {
+const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
   return (
     <div className={styles.header} id="auth-header">
       {currentUser ? (
@@ -23,8 +24,19 @@ const Header = ({ currentUser, syncPending, signOut }) => {
           <span className={syncPending ? styles.emailPending : styles.emailSynced}>
             {currentUser.email}
           </span>
-          <button onClick={signOut} className={`${styles.button} ${styles.signoutButton}`}>
+
+          <button
+            onClick={signOut}
+            className={`${styles.button} ${styles.signoutButton}`}
+          >
             Sign Out
+          </button>
+          <button
+            onClick={exportToExcel}
+            className={`${styles.button} ${styles.signoutButton}`}
+
+          >
+            Export to Excel
           </button>
         </div>
       ) : (

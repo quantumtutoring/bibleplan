@@ -397,7 +397,9 @@ export default function PlanComponent() {
       </Head>
 
       {/* Render Header */}
-      <Header currentUser={currentUser} syncPending={syncPending} signOut={signOut} />
+      <Header currentUser={currentUser} syncPending={syncPending} signOut={signOut} 
+                exportToExcel={handleExportExcel}
+      />
 
       {/* Render ControlsPanel */}
       <div className={styles.container} id="main-content">
@@ -409,7 +411,6 @@ export default function PlanComponent() {
           ntChapters={ntChapters}
           setNtChapters={setNtChapters}
           updateSchedule={updateSchedule}
-          exportToExcel={handleExportExcel}
         />
 
         {/* Render ScheduleTable */}
