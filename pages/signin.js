@@ -4,7 +4,7 @@
  *
  * This page handles user authentication. It uses the centralized UserDataContext to check
  * if a user is already signed in. If a user with a verified email is found, it immediately
- * routes them to their saved Bible version page (fetched from Firestore).
+ * routes them to their saved Bible version page (fetched from Firestore or context).
  * Otherwise, it renders the sign‑in form with options for email/password, Google sign‑in,
  * and password reset.
  */
@@ -27,35 +27,33 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
 
   // Consume the centralized user data.
-  const { currentUser, loading } = useUserDataContext();
+  const { currentUser, userData, loading } = useUserDataContext();
 
   /**
    * routeToVersion
    *
-   * Fetches the user's Firestore document to get the saved Bible version,
-   * updates localStorage with the progress map, and routes the user accordingly.
+   * Uses the user data from context if available; otherwise, falls back to a one‑time Firestore fetch.
+   * Then it updates localStorage with the progress map and routes the user based on their saved Bible version.
    */
   const routeToVersion = async (uid) => {
-    try {
-      console.log("[Signin] Fetching user document for uid:", uid);
+    let userDocData = userData;
+    if (!userDocData) {
+      console.log("[Signin] User data not in context; performing one-time get.");
       const docRef = db.collection("users").doc(uid);
       const docSnap = await docRef.get();
-      let route = "/";
-      if (docSnap.exists) {
-        const userData = docSnap.data();
-        console.log("[Signin] User document data:", userData);
-        localStorage.setItem("progressMap", JSON.stringify(userData?.progress || {}));
-        const storedVersion = userData?.settings?.version;
-        if (storedVersion === "lsb") route = "/lsb";
-        else if (storedVersion === "esv") route = "/esv";
-        else if (storedVersion === "nasb") route = "/nasb";
-      }
-      console.log("[Signin] Routing user to:", route);
-      window.location.href = route;
-    } catch (error) {
-      console.error("[Signin] Error fetching user version:", error);
-      window.location.href = "/";
+      userDocData = docSnap.exists ? docSnap.data() : null;
     }
+    let route = "/";
+    if (userDocData) {
+      console.log("[Signin] User document data:", userDocData);
+      localStorage.setItem("progressMap", JSON.stringify(userDocData?.progress || {}));
+      const storedVersion = userDocData?.settings?.version;
+      if (storedVersion === "lsb") route = "/lsb";
+      else if (storedVersion === "esv") route = "/esv";
+      else if (storedVersion === "nasb") route = "/nasb";
+    }
+    console.log("[Signin] Routing user to:", route);
+    window.location.href = route;
   };
 
   // useEffect: Check authentication state via the centralized context.
@@ -68,7 +66,7 @@ export default function Signin() {
       // Otherwise, allow the sign‑in form to render.
       setShouldRender(true);
     }
-  }, [loading, currentUser]);
+  }, [loading, currentUser, userData]);
 
   // Handler: Sign In with Email/Password.
   const handleSignIn = async (e) => {
@@ -85,8 +83,7 @@ export default function Signin() {
         setMsgType("error");
         // Sign the user out so they cannot access the app until verified.
         await auth.signOut();
-      } 
-      else {
+      } else {
         setMessage("Sign in successful!");
         setMsgType("success");
         setTimeout(() => {

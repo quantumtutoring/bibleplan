@@ -207,6 +207,9 @@ export default function PlanComponent() {
       localStorage.removeItem('check-day-' + i);
     }
     
+    // Clear the progress state regardless of sign-in status.
+    setProgressMap({});
+    
     // If a user is signed in, perform a combined Firestore update
     if (currentUser) {
       console.log('[PlanComponent] Combining settings and progress update for user:', currentUser.uid);
