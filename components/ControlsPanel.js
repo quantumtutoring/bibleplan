@@ -3,25 +3,6 @@
 import React, { useState, useRef } from 'react';
 import styles from '../styles/Home.module.css';
 
-/**
- * ControlsPanel Component
- *
- * Renders the Bible version selector and the chapter-per-day input controls.
- * Also provides buttons to generate a new schedule and to toggle customization mode.
- *
- * When the "Customize Plan" button is clicked, the OT and NT options disappear and
- * are replaced by an auto‐resizing textarea for freeform customization.
- *
- * Props:
- * - version: The current Bible version ("nasb", "lsb", or "esv").
- * - handleVersionChange: Function to call when the Bible version is changed.
- * - otChapters: Number of Old Testament chapters per day.
- * - setOtChapters: Setter function for the OT chapters.
- * - ntChapters: Number of New Testament chapters per day.
- * - setNtChapters: Setter function for the NT chapters.
- * - updateSchedule: Function to generate/update the reading schedule.
- * - exportToExcel: Function to export the schedule to Excel.
- */
 const ControlsPanel = ({
   version,
   handleVersionChange,
@@ -31,30 +12,51 @@ const ControlsPanel = ({
   setNtChapters,
   updateSchedule,
   exportToExcel,
+  customSchedule,
 }) => {
-  // State to toggle customization mode.
   const [customizeMode, setCustomizeMode] = useState(false);
-  // State for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
-
-  // Ref for the textarea so we can auto-resize it.
   const textareaRef = useRef(null);
 
-  // Handler to auto-resize the textarea as the user types.
   const handleTextareaInput = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
     setCustomPlanText(e.target.value);
   };
 
-  // Toggle customization mode.
   const toggleCustomizeMode = () => {
+    if (customizeMode) {
+      // Exiting custom mode: regenerate default schedule without clearing progress.
+      updateSchedule(otChapters, ntChapters, false, true, false);
+    } else {
+      // Entering custom mode: if a custom schedule exists, restore it.
+      if (customSchedule && customSchedule.length > 0) {
+        updateSchedule(customSchedule, undefined, false, false, false);
+      }
+    }
     setCustomizeMode((prevMode) => !prevMode);
+  };
+
+  const handleCreateSchedule = () => {
+    if (customizeMode) {
+      const lines = customPlanText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter((line) => line !== '');
+      const customScheduleArr = lines.map((line, index) => {
+        const url = `https://www.literalword.com/?q=${encodeURIComponent(line)}`;
+        return { day: index + 1, passages: line, url };
+      });
+      // Creating a new custom schedule clears its progress.
+      updateSchedule(customScheduleArr, undefined, false, false, true);
+    } else {
+      // Creating a new default schedule clears its progress.
+      updateSchedule(otChapters, ntChapters, false, false, true);
+    }
   };
 
   return (
     <div>
-      {/* Version selector */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <select value={version} onChange={handleVersionChange}>
           <option value="nasb">NASB</option>
@@ -62,17 +64,11 @@ const ControlsPanel = ({
           <option value="esv">ESV</option>
         </select>
       </div>
-
       <h1>Bible Reading Planner</h1>
-
-      {/* Chapter-per-day input controls or custom plan textarea */}
       <div className={styles.controls}>
         {customizeMode ? (
-          // When in customization mode, hide the chapter inputs and show a textarea.
           <div>
-            <label className={styles.customLabel}>
-              Enter your custom plan:
-            </label>
+            <label className={styles.customLabel}>Enter your custom plan:</label>
             <textarea
               ref={textareaRef}
               value={customPlanText}
@@ -82,9 +78,7 @@ const ControlsPanel = ({
             />
           </div>
         ) : (
-          // When not customizing, show the OT/NT chapter input fields.
-          <>
-            <div className={styles.setChapters}>            
+          <div className={styles.setChapters}>
             <label>
               OT chapters/day (929 total):
               <input
@@ -104,21 +98,17 @@ const ControlsPanel = ({
                 onChange={(e) => setNtChapters(e.target.value)}
               />
             </label>
-            </div>
-          </>
+          </div>
         )}
-        {/* The Create Schedule button remains unchanged */}
-     
-        <div><button onClick={() => updateSchedule()}>Create Schedule</button>
-        
-        {/* Export button */}
-        <button onClick={exportToExcel}>Export to Excel</button>
-        
-        {/* The Customize Plan button toggles customization mode */}
-        <button onClick={toggleCustomizeMode}>
-          {customizeMode ? 'Cancel' : 'Custom Plan'}
-        </button></div>
-
+        <br />
+        <br />
+        <div>
+          <button onClick={handleCreateSchedule}>Create Schedule</button>
+          <button onClick={exportToExcel}>Export to Excel</button>
+          <button onClick={toggleCustomizeMode}>
+            {customizeMode ? 'Cancel' : 'Custom Plan'}
+          </button>
+        </div>
       </div>
     </div>
   );

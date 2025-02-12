@@ -58,7 +58,6 @@ export default function Home() {
     }
   }, [loading, currentUser, userData, router, getItem]);
 
-  // Optionally, you can render a loader while waiting.
   if (loading) return null;
 
   // Render the PlanComponent only when all checks have completed.
