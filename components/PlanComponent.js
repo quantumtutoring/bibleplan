@@ -31,10 +31,15 @@ import ScheduleTable from './ScheduleTable';
 import { generateSchedule } from '../utils/generateSchedule';
 // Import the Excel export helper.
 import { exportScheduleToExcel } from '../utils/exportExcel';
-// Import our new Firestore sync hook.
+// Import the unified Firestore write hook.
 import useUserDataSync from '../hooks/useUserDataSync';
+// Import the new localStorage hook.
+import useLocalStorage from '../hooks/useLocalStorage';
 
 export default function PlanComponent() {
+  // Use our localStorage hook.
+  const { getItem, setItem, removeItem, clear } = useLocalStorage();
+
   // ----------------------------------------------------------
   // 0. Debug Logging on Mount/Unmount
   // ----------------------------------------------------------
@@ -118,18 +123,18 @@ export default function PlanComponent() {
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
   // ----------------------------------------------------------
-  // 4. Helper Functions (using the new Firestore sync hook)
+  // 4. Helper Functions (using useUserDataSync and useLocalStorage)
   // ----------------------------------------------------------
   const { updateUserData } = useUserDataSync();
 
   function saveUserVersion(newVersion, currentUser) {
-    const storedVersion = localStorage.getItem('version');
+    const storedVersion = getItem('version');
     if (storedVersion === newVersion) {
       console.log('[PlanComponent] Version unchanged; skipping Firestore write');
       return;
     }
     console.log('[PlanComponent] Saving version to localStorage and Firestore:', newVersion);
-    localStorage.setItem('version', newVersion);
+    setItem('version', newVersion);
     if (currentUser) {
       // Use the hook to update the version.
       incrementFirestoreWrites();
@@ -153,19 +158,19 @@ export default function PlanComponent() {
         const newOT = String(userData.settings.otChapters);
         console.log('[PlanComponent] Updating OT chapters from Firestore:', newOT);
         setOtChapters(newOT);
-        localStorage.setItem('otChapters', newOT);
+        setItem('otChapters', newOT);
       }
       if (userData.settings.ntChapters) {
         const newNT = String(userData.settings.ntChapters);
         console.log('[PlanComponent] Updating NT chapters from Firestore:', newNT);
         setNtChapters(newNT);
-        localStorage.setItem('ntChapters', newNT);
+        setItem('ntChapters', newNT);
       }
     }
     if (userData && userData.progress) {
       console.log('[PlanComponent] Updating progressMap from Firestore:', userData.progress);
       setProgressMap(userData.progress);
-      localStorage.setItem('progressMap', JSON.stringify(userData.progress));
+      setItem('progressMap', userData.progress);
     }
     updateSchedule(
       userData && userData.settings && userData.settings.otChapters
@@ -180,8 +185,8 @@ export default function PlanComponent() {
 
   useEffect(() => {
     if (!currentUser && !loading) {
-      const storedOT = localStorage.getItem('otChapters');
-      const storedNT = localStorage.getItem('ntChapters');
+      const storedOT = getItem('otChapters');
+      const storedNT = getItem('ntChapters');
       if (storedOT) {
         console.log('[PlanComponent] Loading OT chapters from localStorage:', storedOT);
         setOtChapters(storedOT);
@@ -190,10 +195,10 @@ export default function PlanComponent() {
         console.log('[PlanComponent] Loading NT chapters from localStorage:', storedNT);
         setNtChapters(storedNT);
       }
-      const storedProgress = localStorage.getItem('progressMap');
+      const storedProgress = getItem('progressMap');
       if (storedProgress) {
         console.log('[PlanComponent] Loading progressMap from localStorage:', storedProgress);
-        setProgressMap(JSON.parse(storedProgress));
+        setProgressMap(storedProgress);
       }
       updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
     }
@@ -204,21 +209,21 @@ export default function PlanComponent() {
     // Save relevant data to localStorage.
     if (data.settings) {
       if (data.settings.otChapters !== undefined) {
-        localStorage.setItem('otChapters', String(data.settings.otChapters));
+        setItem('otChapters', String(data.settings.otChapters));
       }
       if (data.settings.ntChapters !== undefined) {
-        localStorage.setItem('ntChapters', String(data.settings.ntChapters));
+        setItem('ntChapters', String(data.settings.ntChapters));
       }
       if (data.settings.version !== undefined) {
-        localStorage.setItem('version', data.settings.version);
+        setItem('version', data.settings.version);
       }
     }
     if (data.progress !== undefined) {
-      localStorage.setItem('progressMap', JSON.stringify(data.progress));
+      setItem('progressMap', data.progress);
     }
-    // Also clear out any individual check-day items.
+    // Remove any individual check-day items.
     for (let i = 1; i < 1000; i++) {
-      localStorage.removeItem('check-day-' + i);
+      removeItem('check-day-' + i);
     }
     // Clear local progress state.
     setProgressMap({});
@@ -233,8 +238,7 @@ export default function PlanComponent() {
     }
   };
 
-  // In place of the old updateUserData function, we now use updateUserDoc.
-  // For example, when generating a new schedule, we might update settings and clear progress:
+  // For example, when generating a new schedule:
   const updateCombinedUserData = (ot, nt) => {
     updateUserDoc({
       settings: { otChapters: ot, ntChapters: nt },
@@ -341,14 +345,14 @@ export default function PlanComponent() {
       newProgress = { ...progressMap };
       for (let i = start; i <= end; i++) {
         newProgress[i] = checked;
-        localStorage.setItem('check-day-' + i, checked ? 'true' : 'false');
+        setItem('check-day-' + i, checked ? 'true' : 'false');
       }
     } else {
       newProgress = { ...progressMap, [day]: checked };
-      localStorage.setItem('check-day-' + day, checked ? 'true' : 'false');
+      setItem('check-day-' + day, checked ? 'true' : 'false');
     }
     setProgressMap(newProgress);
-    localStorage.setItem('progressMap', JSON.stringify(newProgress));
+    setItem('progressMap', newProgress);
     setSyncPending(true);
     if (currentUserRef.current && debouncedSaveRef.current) {
       debouncedSaveRef.current(newProgress);
@@ -370,11 +374,11 @@ export default function PlanComponent() {
     try {
       console.log('[PlanComponent] Signing out user');
       await auth.signOut();
-      localStorage.clear();
-      localStorage.setItem('version', 'nasb');
-      localStorage.setItem('otChapters', '2');
-      localStorage.setItem('ntChapters', '1');
-      localStorage.setItem('progressMap', JSON.stringify({}));
+      clear();
+      setItem('version', 'nasb');
+      setItem('otChapters', '2');
+      setItem('ntChapters', '1');
+      setItem('progressMap', {});
       setProgressMap({});
       router.push('/');
     } catch (error) {
