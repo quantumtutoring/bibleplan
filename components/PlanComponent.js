@@ -28,6 +28,7 @@ import { OT_BOOKS, NT_BOOKS } from '../data/bibleBooks';
 import Header from './Header';
 import ControlsPanel from './ControlsPanel';
 import ScheduleTable from './ScheduleTable';
+import { generateSchedule } from '../utils/generateSchedule';
 // Import the Excel export helper.
 import { exportScheduleToExcel } from '../utils/exportExcel';
 
@@ -402,46 +403,3 @@ export default function PlanComponent() {
     </div>
   );
 }
-
-// Helper function to generate the schedule (remains unchanged)
-const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
-  let scheduleArr = [];
-  let bookIdx = 0,
-    chapter = 1;
-  for (let day = 1; day <= totalDays; day++) {
-    let daily = [];
-    let remaining = chaptersPerDay;
-    while (remaining > 0) {
-      if (bookIdx >= books.length) {
-        if (cycle) {
-          bookIdx = 0;
-          chapter = 1;
-        } else break;
-      }
-      const book = books[bookIdx].name;
-      const total = books[bookIdx].chapters;
-      const available = total - chapter + 1;
-      if (available <= remaining) {
-        daily.push(
-          available === 1
-            ? `${book} ${chapter}`
-            : `${book} ${chapter}-${total}`
-        );
-        remaining -= available;
-        bookIdx++;
-        chapter = 1;
-      } else {
-        const end = chapter + remaining - 1;
-        daily.push(
-          remaining === 1
-            ? `${book} ${chapter}`
-            : `${book} ${chapter}-${end}`
-        );
-        chapter = end + 1;
-        remaining = 0;
-      }
-    }
-    scheduleArr.push(daily.join(', '));
-  }
-  return scheduleArr;
-};
