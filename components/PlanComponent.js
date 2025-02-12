@@ -1,5 +1,4 @@
 // components/PlanComponent.js
-
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -77,8 +76,6 @@ export default function PlanComponent() {
   // Separate progress maps for default and custom schedules.
   const [defaultProgressMap, setDefaultProgressMap] = useState({});
   const [customProgressMap, setCustomProgressMap] = useState({});
-  // The active progress map:
-  const [progressMap, setProgressMap] = useState({});
   // Flag for current schedule mode.
   const [isCustomSchedule, setIsCustomSchedule] = useState(false);
   const [syncPending, setSyncPending] = useState(false);
@@ -113,6 +110,7 @@ export default function PlanComponent() {
     if (version) saveUserVersion(version, currentUser);
   }, [version, currentUser]);
 
+  // When userData is loaded (from Firestore) restore settings and progress maps.
   useEffect(() => {
     if (userData && userData.settings) {
       if (userData.settings.otChapters) {
@@ -147,11 +145,6 @@ export default function PlanComponent() {
       } else if (savedDefaultSchedule) {
         console.log('[PlanComponent] Restoring default schedule from localStorage.');
         setSchedule(savedDefaultSchedule);
-        const savedProgress = getItem('progressMap');
-        if (savedProgress) {
-          setDefaultProgressMap(savedProgress);
-          setProgressMap(savedProgress);
-        }
       } else {
         // No saved schedule; generate one.
         updateSchedule(
@@ -168,6 +161,7 @@ export default function PlanComponent() {
     }
   }, [userData]);
 
+  // When no user is logged in (or during first load) read from localStorage.
   useEffect(() => {
     if (!currentUser && !loading) {
       const storedOT = getItem('otChapters');
@@ -180,12 +174,19 @@ export default function PlanComponent() {
         console.log('[PlanComponent] Loading NT chapters from localStorage:', storedNT);
         setNtChapters(storedNT);
       }
-      const storedProgress = getItem('progressMap');
-      if (storedProgress) {
-        console.log('[PlanComponent] Loading default progressMap from localStorage:', storedProgress);
-        setDefaultProgressMap(storedProgress);
-        setProgressMap(storedProgress);
+      // Load default progress map.
+      const storedDefaultProgress = getItem('progressMap', {});
+      if (storedDefaultProgress) {
+        console.log('[PlanComponent] Loading default progressMap from localStorage:', storedDefaultProgress);
+        setDefaultProgressMap(storedDefaultProgress);
       }
+      // Load custom progress map.
+      const storedCustomProgress = getItem('customProgressMap', {});
+      if (storedCustomProgress) {
+        console.log('[PlanComponent] Loading custom progressMap from localStorage:', storedCustomProgress);
+        setCustomProgressMap(storedCustomProgress);
+      }
+      // Load schedule if it exists.
       const savedDefaultSchedule = getItem('defaultSchedule');
       if (savedDefaultSchedule) {
         console.log('[PlanComponent] Restoring default schedule from localStorage.');
@@ -224,8 +225,6 @@ export default function PlanComponent() {
     for (let i = 1; i < 1000; i++) {
       removeItem('check-day-' + i);
     }
-    // Reset the active progress map (the table’s checkboxes).
-    setProgressMap({});
     if (currentUser) {
       console.log('[PlanComponent] Updating user document for user:', currentUser.uid, data);
       incrementFirestoreWrites();
@@ -247,11 +246,11 @@ export default function PlanComponent() {
    *
    * Two branches:
    *
-   * 1. Custom schedule branch:  
-   *    If the first argument is an array, treat it as a custom schedule.  
+   * 1. Custom schedule branch:
+   *    If the first argument is an array, treat it as a custom schedule.
    *    - Save the custom schedule and (if clearProgress is true) clear the custom progress.
    *
-   * 2. Default schedule branch:  
+   * 2. Default schedule branch:
    *    Otherwise, generate the schedule from the OT/NT numbers.
    */
   const updateSchedule = (scheduleOrOt, nt, fromInit = false, forceUpdate = false, clearProgress = false) => {
@@ -268,9 +267,6 @@ export default function PlanComponent() {
           updateUserData(currentUser.uid, { customProgress: {} });
         }
       }
-      const customProg = clearProgress ? {} : getItem('customProgressMap', {});
-      setProgressMap(customProg);
-      setSchedule(scheduleOrOt);
       // Persist custom schedule locally and in Firestore.
       setItem('customSchedule', scheduleOrOt);
       if (currentUser) {
@@ -278,6 +274,7 @@ export default function PlanComponent() {
           .then(() => console.log('[PlanComponent] Custom schedule saved to Firestore'))
           .catch((error) => console.error('[PlanComponent] Error saving custom schedule:', error));
       }
+      setSchedule(scheduleOrOt);
       return;
     }
     // Default schedule branch.
@@ -341,9 +338,6 @@ export default function PlanComponent() {
         incrementFirestoreWrites();
         updateUserData(currentUser.uid, { defaultProgress: {} });
       }
-      setProgressMap({});
-    } else {
-      setProgressMap(defaultProgressMap);
     }
     setSchedule(newSchedule);
     // Persist the default schedule locally and in Firestore.
@@ -355,28 +349,34 @@ export default function PlanComponent() {
     }
   };
 
+  // Compute the active progress map on the fly.
+  const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
+
+  // Update the checkbox change handler to work with the proper state.
   const handleCheckboxChange = (day, checked, event) => {
     console.log(`[PlanComponent] Checkbox changed for day ${day} to ${checked}`);
     let newProg;
+    // Use the current active progress map.
+    const currentProgress = activeProgressMap;
     if (event.shiftKey && lastCheckedRef.current !== null) {
       const start = Math.min(lastCheckedRef.current, day);
       const end = Math.max(lastCheckedRef.current, day);
-      newProg = { ...progressMap };
+      newProg = { ...currentProgress };
       for (let i = start; i <= end; i++) {
         newProg[i] = checked;
         setItem('check-day-' + i, checked ? 'true' : 'false');
       }
     } else {
-      newProg = { ...progressMap, [day]: checked };
+      newProg = { ...currentProgress, [day]: checked };
       setItem('check-day-' + day, checked ? 'true' : 'false');
     }
     if (isCustomSchedule) {
+      setCustomProgressMap(newProg);
       setItem('customProgressMap', newProg);
     } else {
-      setItem('progressMap', newProg);
       setDefaultProgressMap(newProg);
+      setItem('progressMap', newProg);
     }
-    setProgressMap(newProg);
     setSyncPending(true);
     if (currentUserRef.current && debouncedSaveRef.current) {
       debouncedSaveRef.current(newProg);
@@ -384,6 +384,7 @@ export default function PlanComponent() {
     lastCheckedRef.current = day;
   };
 
+  // Debounced function to save progress.
   const debouncedSaveRef = useRef(null);
   useEffect(() => {
     debouncedSaveRef.current = debounce((newProg) => {
@@ -409,7 +410,7 @@ export default function PlanComponent() {
   }, [isCustomSchedule]);
 
   const handleExportExcel = () => {
-    exportScheduleToExcel(schedule, progressMap);
+    exportScheduleToExcel(schedule, activeProgressMap);
   };
 
   const signOut = async () => {
@@ -424,7 +425,6 @@ export default function PlanComponent() {
       setItem('customProgressMap', {});
       removeItem('defaultSchedule');
       removeItem('customSchedule');
-      setProgressMap({});
       router.push('/');
     } catch (error) {
       console.error('[PlanComponent] Sign out error:', error);
@@ -457,7 +457,7 @@ export default function PlanComponent() {
         />
         <ScheduleTable
           schedule={schedule}
-          progressMap={progressMap}
+          progressMap={activeProgressMap}
           handleCheckboxChange={handleCheckboxChange}
         />
       </div>

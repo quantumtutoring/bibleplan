@@ -1,5 +1,4 @@
 // components/ControlsPanel.js
-
 import React, { useState, useRef } from 'react';
 import styles from '../styles/Home.module.css';
 
