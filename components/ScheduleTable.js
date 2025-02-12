@@ -1,5 +1,4 @@
 // components/ScheduleTable.js
-
 import React from 'react';
 import styles from '../styles/Home.module.css';
 
@@ -40,20 +39,20 @@ const ScheduleTable = ({ schedule, progressMap, handleCheckboxChange }) => {
                   {item.passages}
                 </a>
               </td>
-              <td className={styles.checkboxCell} onClick={(e) => 
-                {
-                // Toggle the current state for the given day
-                const newChecked = !progressMap[item.day];
-                handleCheckboxChange(item.day, newChecked, e);
-                }}>
+              <td
+                className={styles.checkboxCell}
+                onClick={(e) => {
+                  const newChecked = !progressMap?.[item.day];
+                  handleCheckboxChange(item.day, newChecked, e);
+                }}
+              >
                 <input
                   type="checkbox"
                   id={`check-day-${item.day}`}
-                  checked={!!progressMap[item.day]}
+                  checked={!!progressMap?.[item.day]}
                   readOnly
                 />
-            </td>
-
+              </td>
             </tr>
           ))}
         </tbody>

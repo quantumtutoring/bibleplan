@@ -59,6 +59,13 @@ const ControlsPanel = ({
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line !== '');
+      
+      // Check if the number of lines is between 1 and 2000 (inclusive).
+      if (lines.length < 1 || lines.length > 2000) {
+        alert('Please enter between 1 and 2000 lines for your custom plan.');
+        return;
+      }
+      
       const customScheduleArr = lines.map((line, index) => {
         let url;
         if (version === 'lsb') {
@@ -97,7 +104,7 @@ const ControlsPanel = ({
               ref={textareaRef}
               value={customPlanText}
               onInput={handleTextareaInput}
-              placeholder="Type your daily passages on each line..."
+              placeholder="Enter your custom passages here and press the generate button. Each line is a different day."
               className={styles.customTextArea}
             />
           </div>
@@ -126,7 +133,9 @@ const ControlsPanel = ({
         )}
 
         <div>
-          <button onClick={handleCreateSchedule}>{isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}</button>
+          <button onClick={handleCreateSchedule}>
+            {isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}
+          </button>
           <button onClick={toggleCustomizeMode}>
             {isCustomSchedule ? 'Back to Default' : 'Custom Planner'}
           </button>
