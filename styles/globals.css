@@ -1,90 +1,118 @@
 /* styles/globals.css */
 
+/*----------------------------------------------------
+  Global Variables & Base Styles
+----------------------------------------------------*/
 :root {
-  --theme-color: #21426f; /* Color for links, buttons, column headings, etc. */
+  /* Colors */
+  --theme-color: #21426f;          /* Primary theme color for links, buttons, etc. */
+  --theme-hover-color: #0e60b7;      /* Hover state color */
+  --text-color: #333;
+  --background-color: #f9f9f9;
+
+  /* Typography */
+  --font-family: Arial, sans-serif;
+  --base-font-size: 14px;
+
+  /* Spacing & Sizing */
+  --spacing-small: 4px;
+  --spacing-medium: 8px;
+  --spacing-large: 20px;
+
+  /* Shadows */
+  --box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
 }
 
+* {
+  box-sizing: border-box;
+}
 
 body {
-    font-family: Arial, sans-serif;
-    margin: 0;
-    background: #f9f9f9;
-    color: #333;
-    line-height: 1.5;
-    font-size: 14px;
-  }
+  font-family: var(--font-family);
+  margin: 0;
+  background: var(--background-color);
+  color: var(--text-color);
+  line-height: 1.5;
+  font-size: var(--base-font-size);
+}
 
-  input[type="checkbox"] {
-    accent-color: #0e60b7;
-  }
-
-  a:hover {
-    color: #0e60b7
-  }
-
-  a:link {
-    color: var(--theme-color);
-  }
-
+/*----------------------------------------------------
+  Links
+----------------------------------------------------*/
+a:link,
 a:visited {
-    color: var(--theme-color);
-  }
+  color: var(--theme-color);
+  text-decoration: none;
+}
 
+a:hover {
+  color: var(--theme-hover-color);
+}
 
-  h1, h2 {
-    text-align: center;
-    margin-top: 20px;
-    font-size: 28px;
-  }
+/*----------------------------------------------------
+  Form Elements
+----------------------------------------------------*/
+input[type="checkbox"] {
+  accent-color: var(--theme-hover-color);
+}
 
-  
-  .user-info {
-    font-size: 14px;
-    color: #333;
-  }
-  .user-info button {
-    padding: 4px 8px;
-    font-size: 14px;
-    border: none;
-    background: var(--theme-color);
-    color: #fff;
-    border-radius: 4px;
-    cursor: pointer;
-    margin-left: 10px;
-    transition: background 0.3s ease;
-  }
-  .user-info button:hover {
-    background: #0056b3;
-  }
+/*----------------------------------------------------
+  Headings
+----------------------------------------------------*/
+h1, h2 {
+  text-align: center;
+  margin-top: var(--spacing-large);
+  font-size: 28px;
+}
 
-  * {
-    box-sizing: border-box;
-  }
-  
-  /* Scheduler table styles */
-  table#scheduleTable {
-    width: 100%;
-    border-collapse: collapse;
-    margin-bottom: 15px;
-    background: #fff;
-    box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
-  }
-  
-  table#scheduleTable th,
-  table#scheduleTable td {
-    padding: 6px 8px;
-    text-align: center;
-    border-bottom: 1px solid #ddd;
-    font-size: 14px;
-  }
-  
-  table#scheduleTable th {
-    background: --theme-color;
-    color: #fff;
-  }
-  
-  table#scheduleTable tr:hover {
-    background-color: #f1f1f1;
-  }
+/*----------------------------------------------------
+  User Info Block
+----------------------------------------------------*/
+.user-info {
+  font-size: var(--base-font-size);
+  color: var(--text-color);
+}
 
-  
+.user-info button {
+  padding: var(--spacing-small) var(--spacing-medium);
+  font-size: var(--base-font-size);
+  border: none;
+  background: var(--theme-color);
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: var(--spacing-medium);
+  transition: background 0.3s ease;
+}
+
+.user-info button:hover {
+  background: #0056b3;
+}
+
+/*----------------------------------------------------
+  Scheduler Table (Global)
+----------------------------------------------------*/
+table#scheduleTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: var(--spacing-large);
+  background: #fff;
+  box-shadow: var(--box-shadow);
+}
+
+table#scheduleTable th,
+table#scheduleTable td {
+  padding: 6px 8px;
+  text-align: center;
+  border-bottom: 1px solid #ddd;
+  font-size: var(--base-font-size);
+}
+
+table#scheduleTable th {
+  background: var(--theme-color);
+  color: #fff;
+}
+
+table#scheduleTable tr:hover {
+  background-color: #f1f1f1;
+}

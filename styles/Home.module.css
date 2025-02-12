@@ -1,46 +1,38 @@
 /* styles/Home.module.css */
+
+/*----------------------------------------------------
+  Header Styling
+----------------------------------------------------*/
 .header {
   position: fixed;
-  height:45px;
   top: 0;
   left: 0;
   width: 100%;
-  z-index: 1000; /* Ensures the header stays on top */
+  z-index: 1000;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 0;
   height: 40px;
-  background-color: rgba(255, 255, 255, 0.9); 
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  background-color: rgba(255, 255, 255, 0.9);
+  box-shadow: var(--box-shadow);
   font-weight: bold;
 }
-
 
 .header a {
   text-decoration: none;
   font-size: 16px;
 }
 
+/*----------------------------------------------------
+  Page Background & Container
+----------------------------------------------------*/
 .pageBackground {
-  /* Point to your image in the public folder */
   background: url("/background.jpg") no-repeat center center fixed;
   background-size: cover;
-
-  /* Ensure it fills the height */
   min-height: 100vh;
-
-  /* If you want to ensure no extra margins/padding */
   margin: 0;
   padding: 0;
-  padding-top:140px;
-}
-
-/* If desired, ensure header and container are transparent or partially transparent
-   so the background image can show through. This depends on your design: */
-.header {
-  background-color: rgba(255, 255, 255, 0.9); 
-  font-weight: bold;
+  padding-top: 140px;
 }
 
 .container {
@@ -49,13 +41,15 @@
   margin: auto;
   padding: 5px;
   border-radius: 4px;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--box-shadow);
 }
 
+/*----------------------------------------------------
+  Controls Panel
+----------------------------------------------------*/
 .controls {
   text-align: center;
-  margin: 10px 0;
-  margin-bottom:40px;
+  margin: 10px 0 40px;
 }
 
 .controls input {
@@ -66,7 +60,7 @@
   margin-left: 6px;
 }
 
-/* Apply the same styling to both controls buttons and standalone buttons */
+/* Shared Button Styles */
 .controls button,
 .button {
   padding: 8px;
@@ -85,11 +79,7 @@
   background: #0056b3;
 }
 
-/* Additional styling for the sign-out button:
-   - Narrower vertical padding (5px top and bottom)
-   - White background
-   - Gray border
-   - Darker text for contrast */
+/* Sign-out Button */
 .signoutButton {
   padding: 4px 8px;
   background: #fff;
@@ -100,17 +90,19 @@
 }
 
 .signoutButton:hover {
-    background: var(--theme-color);
-    color: #fff;
+  background: var(--theme-color);
+  color: #fff;
 }
 
-/* Local styling for the table using a local class */
+/*----------------------------------------------------
+  Schedule Table (Local Styles)
+----------------------------------------------------*/
 .scheduleTable {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 15px;
   background: #fff;
-  box-shadow: 0 0 4px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--box-shadow);
 }
 
 .scheduleTable th,
@@ -135,19 +127,12 @@
   width: 40px;
 }
 
+/*----------------------------------------------------
+  Responsive Adjustments
+----------------------------------------------------*/
 @media screen and (max-width: 600px) {
   .container, .scheduleTable, .scheduleTable th, .scheduleTable td {
     font-size: 14px;
     padding: 6px 8px;
   }
-}
-
-.emailPending {
-  color: gray;
-  margin-right: 10px;
-}
-
-.emailSynced {
-  color: var(--theme-color);
-  margin-right: 10px;
 }

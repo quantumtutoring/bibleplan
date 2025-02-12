@@ -1,6 +1,8 @@
 /* styles/Signin.module.css */
 
-/* 1) The full-page background. */
+/*----------------------------------------------------
+  Full-page Background
+----------------------------------------------------*/
 .pageBackground {
   background: url("/background.jpg") no-repeat center center fixed;
   background-size: cover;
@@ -8,47 +10,28 @@
   margin: 0;
   padding: 0;
   display: flex;
-  align-items: center; /* optional - vertically center */
-  justify-content: center; /* optional - horizontally center */
+  align-items: center;
+  justify-content: center;
 }
 
-/* 2) Container for the sign in form content */
-.signinContainer {
-  /* Optionally give the container a nice background, 
-     so text is easier to read on top of the background image. */
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 2rem;
-  border-radius: 8px;
-  max-width: 400px;
-  width: 100%;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-}
-
-/* Example form styling, as you already have: */
-.signinForm {
-  display: flex;
-  flex-direction: column;
-}
-
-/* ...the rest of your existing styles... */
-
-
+/*----------------------------------------------------
+  Sign-in Container
+----------------------------------------------------*/
 .signinContainer {
   max-width: 400px;
   margin: 80px auto;
   padding: 30px 40px;
+  background-color: rgba(255, 255, 255, 0.9);
   border: 1px solid #eaeaea;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
   text-align: center;
+  width:100%
 }
 
-.signinContainer h2 {
-  margin-bottom: 20px;
-  font-size: 1.75rem;
-  color: #333;
-}
-
+/*----------------------------------------------------
+  Sign-in Form
+----------------------------------------------------*/
 .signinForm {
   display: flex;
   flex-direction: column;
@@ -56,6 +39,7 @@
   text-align: left;
 }
 
+/* Input Group */
 .inputGroup {
   display: flex;
   flex-direction: column;
@@ -80,6 +64,9 @@
   border-color: var(--theme-color);
 }
 
+/*----------------------------------------------------
+  Authentication Buttons
+----------------------------------------------------*/
 .authButtons {
   display: flex;
   flex-direction: column;
@@ -105,7 +92,7 @@
 .signIn {
   background: var(--theme-color);
   color: #fff;
-  border:none;
+  border: none;
 }
 
 .signIn:hover {
@@ -123,6 +110,9 @@
   color: #fff;
 }
 
+/*----------------------------------------------------
+  Google Sign-In Button
+----------------------------------------------------*/
 .googleSignin {
   background-color: #fff;
   border: 1px solid #dcdcdc;
@@ -147,6 +137,9 @@
   height: 20px;
 }
 
+/*----------------------------------------------------
+  Reset Password Link
+----------------------------------------------------*/
 .resetPassword {
   margin-top: 10px;
   font-size: 0.9rem;
@@ -166,6 +159,9 @@
   color: #0056b3;
 }
 
+/*----------------------------------------------------
+  Message & Navigation Links
+----------------------------------------------------*/
 .message {
   margin-top: 15px;
   font-size: 0.9rem;
@@ -185,5 +181,5 @@
 
 .backToHome a:hover {
   text-decoration: underline;
-  color:#0056b3;
+  color: #0056b3;
 }
