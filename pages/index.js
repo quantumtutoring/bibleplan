@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import PlanComponent from "../components/PlanComponent"; // Main planner component
 import { useUserDataContext } from "../contexts/UserDataContext";
+import useLocalStorage from "../hooks/useLocalStorage";
 
 export default function Home() {
   const router = useRouter();
@@ -19,6 +20,8 @@ export default function Home() {
   
   // Get authentication and Firestore data from the centralized context.
   const { currentUser, userData, loading } = useUserDataContext();
+  // Use our localStorage hook to abstract local storage operations.
+  const { getItem } = useLocalStorage();
 
   useEffect(() => {
     // Wait until the centralized context has finished loading.
@@ -40,8 +43,8 @@ export default function Home() {
       }
     } else {
       // --- Case 2: User is not signed in ---
-      // For guest users, check localStorage for a stored version.
-      const localVersion = localStorage.getItem("version");
+      // For guest users, check localStorage (via our hook) for a stored version.
+      const localVersion = getItem("version");
       if (
         localVersion === "nasb" ||
         localVersion === "lsb" ||
@@ -53,7 +56,7 @@ export default function Home() {
         setShouldRender(true);
       }
     }
-  }, [loading, currentUser, userData, router]);
+  }, [loading, currentUser, userData, router, getItem]);
 
   // Optionally, you can render a loader while waiting.
   if (loading) return null;
