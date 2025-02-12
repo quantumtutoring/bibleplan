@@ -1,6 +1,7 @@
 // components/ControlsPanel.js
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import styles from '../styles/Home.module.css';
+import useLocalStorage from '../hooks/useLocalStorage';
 
 const ControlsPanel = ({
   version,
@@ -15,24 +16,34 @@ const ControlsPanel = ({
   isCustomSchedule,
   setIsCustomSchedule
 }) => {
+  const { getItem, setItem } = useLocalStorage();
   // Local state for the custom plan text
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
+  // On mount, restore the custom text from local storage.
+  useEffect(() => {
+    const storedText = getItem('customPlanText', '');
+    setCustomPlanText(storedText);
+  }, [getItem]);
+
   const handleTextareaInput = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
-    setCustomPlanText(e.target.value);
+    const newText = e.target.value;
+    setCustomPlanText(newText);
+    setItem('customPlanText', newText);
   };
 
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
-      // Exiting custom mode: regenerate default schedule without clearing progress.
-      updateSchedule(otChapters, ntChapters, false, true, false);
+      // Exiting custom mode: regenerate default schedule without clearing its progress.
+      // Note: We pass preserveProgress=true so that updateCombinedUserData does NOT clear progress.
+      updateSchedule(otChapters, ntChapters, false, true, false, true);
       setIsCustomSchedule(false);
     } else {
       // Entering custom mode:
-      // If a custom schedule exists, restore it; otherwise, clear the schedule so that no table is shown.
+      // If a custom schedule exists, restore it; otherwise, update with an empty schedule so no table is shown.
       if (customSchedule && customSchedule.length > 0) {
         updateSchedule(customSchedule, undefined, false, false, false);
       } else {
