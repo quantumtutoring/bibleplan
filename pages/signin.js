@@ -1,6 +1,6 @@
 // pages/signin.js
 /**
- * Signin.js
+ * Signin.js - Main Landing/Routing Page
  *
  * This page handles user authentication. It uses the centralized UserDataContext to check
  * if a user is already signed in. If a user with a verified email is found, it immediately
@@ -25,11 +25,11 @@ export default function Signin() {
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
-  const router = useRouter();
   const [shouldRender, setShouldRender] = useState(false);
+  const router = useRouter();
 
   // Consume the centralized user data.
-  const { currentUser, loading } = useUserDataContext();
+  const { currentUser, userData, loading } = useUserDataContext();
   // Get the unified update function from our hook.
   const { updateUserData } = useUserDataSync();
 
@@ -109,16 +109,35 @@ export default function Signin() {
       const otChapters = localStorage.getItem("otChapters") || "2";
       const ntChapters = localStorage.getItem("ntChapters") || "1";
       const version = localStorage.getItem("version") || "nasb";
+
+      // Retrieve default progress map.
       const progressMap = localStorage.getItem("progressMap")
         ? JSON.parse(localStorage.getItem("progressMap"))
         : {};
+      // Retrieve custom progress map.
+      const customProgressMap = localStorage.getItem("customProgressMap")
+        ? JSON.parse(localStorage.getItem("customProgressMap"))
+        : {};
+      // Retrieve default schedule.
+      const defaultSchedule = localStorage.getItem("defaultSchedule")
+        ? JSON.parse(localStorage.getItem("defaultSchedule"))
+        : null;
+      // Retrieve custom schedule.
+      const customSchedule = localStorage.getItem("customSchedule")
+        ? JSON.parse(localStorage.getItem("customSchedule"))
+        : null;
+      // Retrieve custom mode flag.
+      const isCustom = localStorage.getItem("isCustomSchedule") === "true";
 
-      console.log("[Signin] Populating Firestore with default settings for new user.");
+      console.log("[Signin] Populating Firestore with all local data for new user.");
 
-      // Use the unified hook to update the user's document.
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
+        // Save both sets of progress and schedules.
         progress: progressMap,
+        customProgress: customProgressMap,
+        schedule: defaultSchedule,
+        customSchedule: customSchedule,
       });
 
       // Send an email verification.
@@ -191,7 +210,7 @@ export default function Signin() {
     }
   };
 
-  // Render nothing until the authentication check is complete.
+  if (loading) return null;
   if (!shouldRender) return null;
 
   return (

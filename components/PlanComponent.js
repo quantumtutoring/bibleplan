@@ -19,20 +19,19 @@ export default function PlanComponent() {
   const { getItem, setItem, removeItem, clear } = useLocalStorage();
   const router = useRouter();
 
-  // Determine the Bible version solely from the URL using router.pathname.
-  // (Assumes your pages are named exactly '/nasb', '/lsb', and '/esv'.)
+  // Determine the Bible version solely from the URL (using pathname)
   const pathname = router.pathname;
   let version = 'nasb';
   if (pathname === '/lsb') version = 'lsb';
   else if (pathname === '/esv') version = 'esv';
 
-  // Store the current version in local state.
+  // Store the current version in state.
   const [currentVersion, setCurrentVersion] = useState(version);
   useEffect(() => {
     setCurrentVersion(version);
   }, [version]);
 
-  // Save the current version to localStorage so that the index page can read it.
+  // Save the current version to localStorage for routing from index.js.
   useEffect(() => {
     setItem("version", currentVersion);
   }, [currentVersion, setItem]);
@@ -44,6 +43,7 @@ export default function PlanComponent() {
     router.push(`/${newVal}`);
   };
 
+  // Firestore and user data code.
   const [firestoreReads, setFirestoreReads] = useState(0);
   const [firestoreWrites, setFirestoreWrites] = useState(0);
   const incrementFirestoreReads = () => setFirestoreReads(prev => prev + 1);
@@ -75,7 +75,7 @@ export default function PlanComponent() {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  // State variables for OT/NT chapters, schedules, and progress maps.
+  // State for chapters, schedule, and progress maps.
   const [otChapters, setOtChapters] = useState('2');
   const [ntChapters, setNtChapters] = useState('1');
   const [schedule, setSchedule] = useState([]);
@@ -86,11 +86,12 @@ export default function PlanComponent() {
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
   const [customSchedule, setCustomSchedule] = useState(null);
+  // We still have initialScheduleLoaded to run the first restoration from localStorage.
   const initialScheduleLoaded = useRef(false);
 
   const { updateUserData } = useUserDataSync();
 
-  // Restore stored values (except version) from local storage.
+  // Restore stored values from localStorage.
   useEffect(() => {
     const storedOT = getItem('otChapters', null);
     if (storedOT) { setOtChapters(storedOT); }
@@ -118,9 +119,9 @@ export default function PlanComponent() {
     initialScheduleLoaded.current = true;
   }, [currentUser, loading]);
 
-  // Also update values from userData if available.
+  // Also update state from Firestore whenever userData changes.
   useEffect(() => {
-    if (userData && !initialScheduleLoaded.current) {
+    if (userData) {
       if (userData.settings) {
         if (userData.settings.otChapters) {
           const newOT = String(userData.settings.otChapters);
@@ -143,19 +144,18 @@ export default function PlanComponent() {
         setCustomProgressMap(userData.customProgress);
         setItem('customProgressMap', userData.customProgress);
       }
-      const storedDefaultSchedule = getItem('defaultSchedule', null);
-      if (storedDefaultSchedule) {
-        console.log('[PlanComponent] Restoring default schedule from localStorage.');
-        setSchedule(storedDefaultSchedule);
+      if (userData.schedule) {
+        console.log('[PlanComponent] Restoring default schedule from Firestore.');
+        setSchedule(userData.schedule);
       }
-      const storedCustomSchedule = getItem('customSchedule', null);
-      if (storedCustomSchedule) {
-        console.log('[PlanComponent] Restoring custom schedule from localStorage.');
-        setCustomSchedule(storedCustomSchedule);
+      if (userData.customSchedule) {
+        console.log('[PlanComponent] Restoring custom schedule from Firestore.');
+        setCustomSchedule(userData.customSchedule);
       }
-      const savedMode = getItem('isCustomSchedule', false);
-      setIsCustomSchedule(savedMode);
-      initialScheduleLoaded.current = true;
+      // Always update mode from Firestore if present.
+      if (typeof userData.isCustomSchedule === "boolean") {
+        setIsCustomSchedule(userData.isCustomSchedule);
+      }
     }
   }, [userData]);
 
@@ -202,7 +202,14 @@ export default function PlanComponent() {
     }
   };
 
-  const updateSchedule = (scheduleOrOt, nt, fromInit = false, forceUpdate = false, clearProgress = false, preserveProgress = false) => {
+  const updateSchedule = (
+    scheduleOrOt,
+    nt,
+    fromInit = false,
+    forceUpdate = false,
+    clearProgress = false,
+    preserveProgress = false
+  ) => {
     // Custom schedule branch.
     if (Array.isArray(scheduleOrOt)) {
       console.log('[PlanComponent] Custom schedule provided.');
@@ -240,8 +247,17 @@ export default function PlanComponent() {
     // Default schedule branch.
     const otNum = parseInt(scheduleOrOt, 10);
     const ntNum = parseInt(nt, 10);
-    if (isNaN(otNum) || otNum < 1 || otNum > 100 || isNaN(ntNum) || ntNum < 1 || ntNum > 100) {
-      alert('Please enter a valid number between 1 and 100 for both OT and NT chapters per day.');
+    if (
+      isNaN(otNum) ||
+      otNum < 1 ||
+      otNum > 100 ||
+      isNaN(ntNum) ||
+      ntNum < 1 ||
+      ntNum > 100
+    ) {
+      alert(
+        'Please enter a valid number between 1 and 100 for both OT and NT chapters per day.'
+      );
       return;
     }
     const totalOT = 929;
@@ -258,7 +274,10 @@ export default function PlanComponent() {
       console.log('[PlanComponent] Settings unchanged; schedule remains the same.');
       return;
     }
-    console.log('[PlanComponent] Updating default schedule' + (clearProgress ? ' with cleared progress.' : '.'));
+    console.log(
+      '[PlanComponent] Updating default schedule' +
+        (clearProgress ? ' with cleared progress.' : '.')
+    );
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
     if (!fromInit) {
       updateCombinedUserData(otNum, ntNum, !preserveProgress);
