@@ -110,52 +110,58 @@ export default function PlanComponent() {
     if (version) saveUserVersion(version, currentUser);
   }, [version, currentUser]);
 
-  // When userData is loaded (from Firestore) restore settings and progress maps.
+  // When userData is loaded (from Firestore) restore settings, mode, schedule, and progress maps.
   useEffect(() => {
-    if (userData && userData.settings) {
-      if (userData.settings.otChapters) {
-        const newOT = String(userData.settings.otChapters);
-        console.log('[PlanComponent] Updating OT chapters from Firestore:', newOT);
-        setOtChapters(newOT);
-        setItem('otChapters', newOT);
-      }
-      if (userData.settings.ntChapters) {
-        const newNT = String(userData.settings.ntChapters);
-        console.log('[PlanComponent] Updating NT chapters from Firestore:', newNT);
-        setNtChapters(newNT);
-        setItem('ntChapters', newNT);
-      }
-    }
-    // Load progress maps from userData.
-    if (userData && userData.defaultProgress) {
-      setDefaultProgressMap(userData.defaultProgress);
-      setItem('progressMap', userData.defaultProgress);
-    }
-    if (userData && userData.customProgress) {
-      setCustomProgressMap(userData.customProgress);
-      setItem('customProgressMap', userData.customProgress);
-    }
-    // Restore schedule from localStorage if it exists.
     if (userData && !initialScheduleLoaded.current) {
-      const savedCustomSchedule = getItem('customSchedule');
-      const savedDefaultSchedule = getItem('defaultSchedule');
-      if (savedCustomSchedule) {
-        console.log('[PlanComponent] Restoring custom schedule from localStorage.');
-        updateSchedule(savedCustomSchedule, null, true);
-      } else if (savedDefaultSchedule) {
-        console.log('[PlanComponent] Restoring default schedule from localStorage.');
-        setSchedule(savedDefaultSchedule);
+      if (userData.settings) {
+        if (userData.settings.otChapters) {
+          const newOT = String(userData.settings.otChapters);
+          console.log('[PlanComponent] Updating OT chapters from Firestore:', newOT);
+          setOtChapters(newOT);
+          setItem('otChapters', newOT);
+        }
+        if (userData.settings.ntChapters) {
+          const newNT = String(userData.settings.ntChapters);
+          console.log('[PlanComponent] Updating NT chapters from Firestore:', newNT);
+          setNtChapters(newNT);
+          setItem('ntChapters', newNT);
+        }
+      }
+      // Load progress maps from userData.
+      if (userData.defaultProgress) {
+        setDefaultProgressMap(userData.defaultProgress);
+        setItem('progressMap', userData.defaultProgress);
+      }
+      if (userData.customProgress) {
+        setCustomProgressMap(userData.customProgress);
+        setItem('customProgressMap', userData.customProgress);
+      }
+      // Restore schedule and mode from localStorage.
+      const savedMode = getItem('isCustomSchedule', false);
+      if (savedMode) {
+        setIsCustomSchedule(true);
+        const savedCustomSchedule = getItem('customSchedule');
+        if (savedCustomSchedule) {
+          console.log('[PlanComponent] Restoring custom schedule from localStorage.');
+          updateSchedule(savedCustomSchedule, null, true);
+        }
       } else {
-        // No saved schedule; generate one.
-        updateSchedule(
-          userData.settings && userData.settings.otChapters
-            ? String(userData.settings.otChapters)
-            : otChapters,
-          userData.settings && userData.settings.ntChapters
-            ? String(userData.settings.ntChapters)
-            : ntChapters,
-          true
-        );
+        setIsCustomSchedule(false);
+        const savedDefaultSchedule = getItem('defaultSchedule');
+        if (savedDefaultSchedule) {
+          console.log('[PlanComponent] Restoring default schedule from localStorage.');
+          setSchedule(savedDefaultSchedule);
+        } else {
+          updateSchedule(
+            userData.settings && userData.settings.otChapters
+              ? String(userData.settings.otChapters)
+              : otChapters,
+            userData.settings && userData.settings.ntChapters
+              ? String(userData.settings.ntChapters)
+              : ntChapters,
+            true
+          );
+        }
       }
       initialScheduleLoaded.current = true;
     }
@@ -174,25 +180,35 @@ export default function PlanComponent() {
         console.log('[PlanComponent] Loading NT chapters from localStorage:', storedNT);
         setNtChapters(storedNT);
       }
-      // Load default progress map.
+      // Load progress maps.
       const storedDefaultProgress = getItem('progressMap', {});
       if (storedDefaultProgress) {
         console.log('[PlanComponent] Loading default progressMap from localStorage:', storedDefaultProgress);
         setDefaultProgressMap(storedDefaultProgress);
       }
-      // Load custom progress map.
       const storedCustomProgress = getItem('customProgressMap', {});
       if (storedCustomProgress) {
         console.log('[PlanComponent] Loading custom progressMap from localStorage:', storedCustomProgress);
         setCustomProgressMap(storedCustomProgress);
       }
-      // Load schedule if it exists.
-      const savedDefaultSchedule = getItem('defaultSchedule');
-      if (savedDefaultSchedule) {
-        console.log('[PlanComponent] Restoring default schedule from localStorage.');
-        setSchedule(savedDefaultSchedule);
+      // Load schedule and mode.
+      const savedMode = getItem('isCustomSchedule', false);
+      if (savedMode) {
+        setIsCustomSchedule(true);
+        const savedCustomSchedule = getItem('customSchedule');
+        if (savedCustomSchedule) {
+          console.log('[PlanComponent] Restoring custom schedule from localStorage.');
+          updateSchedule(savedCustomSchedule, null, true);
+        }
       } else {
-        updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
+        setIsCustomSchedule(false);
+        const savedDefaultSchedule = getItem('defaultSchedule');
+        if (savedDefaultSchedule) {
+          console.log('[PlanComponent] Restoring default schedule from localStorage.');
+          setSchedule(savedDefaultSchedule);
+        } else {
+          updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
+        }
       }
     }
   }, [currentUser, loading]);
@@ -259,6 +275,7 @@ export default function PlanComponent() {
       console.log('[PlanComponent] Custom schedule provided.');
       setCustomSchedule(scheduleOrOt);
       setIsCustomSchedule(true);
+      setItem('isCustomSchedule', true);
       if (clearProgress) {
         setCustomProgressMap({});
         setItem('customProgressMap', {});
@@ -331,6 +348,7 @@ export default function PlanComponent() {
       newSchedule.push({ day, passages: linkText, url });
     }
     setIsCustomSchedule(false);
+    setItem('isCustomSchedule', false);
     if (clearProgress) {
       setDefaultProgressMap({});
       setItem('progressMap', {});
@@ -454,12 +472,18 @@ export default function PlanComponent() {
           updateSchedule={updateSchedule}
           exportToExcel={handleExportExcel}
           customSchedule={customSchedule}
+          isCustomSchedule={isCustomSchedule}
+          setIsCustomSchedule={setIsCustomSchedule}
         />
-        <ScheduleTable
-          schedule={schedule}
-          progressMap={activeProgressMap}
-          handleCheckboxChange={handleCheckboxChange}
-        />
+        {/* Render the table only if a schedule exists. In custom mode,
+            if the custom schedule is empty, no table is shown. */}
+        {schedule && schedule.length > 0 && (
+          <ScheduleTable
+            schedule={schedule}
+            progressMap={activeProgressMap}
+            handleCheckboxChange={handleCheckboxChange}
+          />
+        )}
       </div>
     </div>
   );

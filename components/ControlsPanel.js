@@ -1,5 +1,5 @@
 // components/ControlsPanel.js
-import React, { useState, useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import styles from '../styles/Home.module.css';
 
 const ControlsPanel = ({
@@ -12,8 +12,10 @@ const ControlsPanel = ({
   updateSchedule,
   exportToExcel,
   customSchedule,
+  isCustomSchedule,
+  setIsCustomSchedule
 }) => {
-  const [customizeMode, setCustomizeMode] = useState(false);
+  // Local state for the custom plan text
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
@@ -24,20 +26,25 @@ const ControlsPanel = ({
   };
 
   const toggleCustomizeMode = () => {
-    if (customizeMode) {
+    if (isCustomSchedule) {
       // Exiting custom mode: regenerate default schedule without clearing progress.
       updateSchedule(otChapters, ntChapters, false, true, false);
+      setIsCustomSchedule(false);
     } else {
-      // Entering custom mode: if a custom schedule exists, restore it.
+      // Entering custom mode:
+      // If a custom schedule exists, restore it; otherwise, clear the schedule so that no table is shown.
       if (customSchedule && customSchedule.length > 0) {
         updateSchedule(customSchedule, undefined, false, false, false);
+      } else {
+        updateSchedule([], undefined, false, false, false);
       }
+      setIsCustomSchedule(true);
     }
-    setCustomizeMode((prevMode) => !prevMode);
   };
 
   const handleCreateSchedule = () => {
-    if (customizeMode) {
+    if (isCustomSchedule) {
+      // Build a custom schedule from the textarea input.
       const lines = customPlanText
         .split('\n')
         .map((line) => line.trim())
@@ -65,7 +72,7 @@ const ControlsPanel = ({
       </div>
       <h1>Bible Reading Planner</h1>
       <div className={styles.controls}>
-        {customizeMode ? (
+        {isCustomSchedule ? (
           <div>
             <label className={styles.customLabel}>Enter your custom plan:</label>
             <textarea
@@ -105,7 +112,7 @@ const ControlsPanel = ({
           <button onClick={handleCreateSchedule}>Create Schedule</button>
           <button onClick={exportToExcel}>Export to Excel</button>
           <button onClick={toggleCustomizeMode}>
-            {customizeMode ? 'Cancel' : 'Custom Plan'}
+            {isCustomSchedule ? 'Cancel' : 'Custom Plan'}
           </button>
         </div>
       </div>
