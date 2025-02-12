@@ -4,8 +4,8 @@ import styles from '../styles/Home.module.css';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const ControlsPanel = ({
-  version,               // version is passed from the parent (e.g. 'nasb', 'lsb', or 'esv')
-  handleVersionChange,   // function to handle changes – navigates to the new URL
+  version,               // e.g., 'nasb', 'lsb', or 'esv'
+  handleVersionChange,
   otChapters,
   setOtChapters,
   ntChapters,
@@ -17,11 +17,11 @@ const ControlsPanel = ({
   setIsCustomSchedule
 }) => {
   const { getItem, setItem } = useLocalStorage();
-  // Local state for the custom plan text remains managed here.
+  // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // On mount, restore the custom text (if any) from local storage.
+  // On mount, restore the custom text from local storage.
   useEffect(() => {
     const storedText = getItem('customPlanText', '');
     setCustomPlanText(storedText);
@@ -37,12 +37,11 @@ const ControlsPanel = ({
 
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
-      // Exiting custom mode: regenerate default schedule without clearing its progress.
+      // Exiting custom mode: regenerate default schedule.
       updateSchedule(otChapters, ntChapters, false, true, false, true);
       setIsCustomSchedule(false);
     } else {
-      // Entering custom mode:
-      // If a custom schedule exists, restore it; otherwise, update with an empty schedule so no table is shown.
+      // Entering custom mode: restore custom schedule if available.
       if (customSchedule && customSchedule.length > 0) {
         updateSchedule(customSchedule, undefined, false, false, false);
       } else {
@@ -53,44 +52,36 @@ const ControlsPanel = ({
   };
 
   // Helper function to format a Bible reference:
-  // - Inserts a space after commas/semicolons if missing.
-  // - Inserts a space between a sequence of letters and the following digits (and vice-versa).
+  // - Inserts space after commas/semicolons if missing.
+  // - Inserts space between letters and digits.
+  // - Inserts space between a book name and the chapter.
   // - Converts each word to title case.
   const formatBibleReference = (str) => {
     if (!str) return "";
     let formatted = str.trim();
-    // Insert a space after commas or semicolons if missing.
     formatted = formatted.replace(/([,;])(?!\s)/g, "$1 ");
-    // Insert a space between letters and following digits.
     formatted = formatted.replace(/([A-Za-z]+)(\d+)/g, "$1 $2");
-    // Insert a space between digits and following letters.
     formatted = formatted.replace(/(\d+)([A-Za-z]+)/g, "$1 $2");
-    // Split into words and convert each to title case.
-    formatted = formatted.split(/\s+/).map(word => {
-      if (word.length > 0) {
-        return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
-      }
-      return word;
-    }).join(" ");
+    formatted = formatted
+      .split(/\s+/)
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(" ");
     return formatted;
   };
 
   const handleCreateSchedule = () => {
     if (isCustomSchedule) {
-      // Build a custom schedule from the textarea input using the current version.
       const lines = customPlanText
         .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line !== '');
+        .map(line => line.trim())
+        .filter(line => line !== '');
       
-      // Check if the number of lines is between 1 and 2000 (inclusive).
       if (lines.length < 1 || lines.length > 2000) {
         alert('Please enter between 1 and 2000 lines for your custom plan.');
         return;
       }
       
       const customScheduleArr = lines.map((line, index) => {
-        // Format the line as a Bible reference.
         const formattedLine = formatBibleReference(line);
         let url;
         if (version === 'lsb') {
@@ -102,10 +93,8 @@ const ControlsPanel = ({
         }
         return { day: index + 1, passages: formattedLine, url };
       });
-      // Creating a new custom schedule clears its progress.
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
-      // Creating a new default schedule clears its progress.
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
   };
@@ -113,7 +102,6 @@ const ControlsPanel = ({
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        {/* The select dropdown uses the version prop directly */}
         <select value={version} onChange={handleVersionChange}>
           <option value="nasb">NASB</option>
           <option value="lsb">LSB</option>
@@ -124,7 +112,7 @@ const ControlsPanel = ({
       <div className={styles.controls}>
         {isCustomSchedule ? (
           <div>
-            <label className={styles.customLabel}>Enter your custom plan:</label>
+            
             <textarea
               ref={textareaRef}
               value={customPlanText}
@@ -156,20 +144,19 @@ const ControlsPanel = ({
             </label>
           </div>
         )}
-
         <div>
           <button onClick={handleCreateSchedule}>
             {isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}
           </button>
+
+          <button onClick={exportToExcel}>
+              Export to Excel
+            </button>
+
           <button onClick={toggleCustomizeMode}>
             {isCustomSchedule ? 'Default Planner' : 'Custom Planner'}
           </button>
-          {/* Render Export to Excel button only in custom mode */}
-          {isCustomSchedule && (
-            <button onClick={exportToExcel}>
-              Export to Excel
-            </button>
-          )}
+
         </div>
       </div>
     </div>
