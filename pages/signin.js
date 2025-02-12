@@ -106,38 +106,47 @@ export default function Signin() {
       console.log("[Signin] Account created:", user);
 
       // Retrieve default settings from localStorage or use defaults.
-      const otChapters = localStorage.getItem("otChapters") || "2";
-      const ntChapters = localStorage.getItem("ntChapters") || "1";
+      // Parse numeric values so that they are stored correctly.
+      const otChapters = localStorage.getItem("otChapters")
+        ? Number(JSON.parse(localStorage.getItem("otChapters")))
+        : 2;
+      const ntChapters = localStorage.getItem("ntChapters")
+        ? Number(JSON.parse(localStorage.getItem("ntChapters")))
+        : 1;
       const version = localStorage.getItem("version") || "nasb";
 
       // Retrieve default progress map.
       const progressMap = localStorage.getItem("progressMap")
         ? JSON.parse(localStorage.getItem("progressMap"))
         : {};
+
       // Retrieve custom progress map.
       const customProgressMap = localStorage.getItem("customProgressMap")
         ? JSON.parse(localStorage.getItem("customProgressMap"))
         : {};
-      // Retrieve default schedule.
-      const defaultSchedule = localStorage.getItem("defaultSchedule")
-        ? JSON.parse(localStorage.getItem("defaultSchedule"))
-        : null;
+
       // Retrieve custom schedule.
-      const customSchedule = localStorage.getItem("customSchedule")
+      const storedCustomSchedule = localStorage.getItem("customSchedule")
         ? JSON.parse(localStorage.getItem("customSchedule"))
         : null;
-      // Retrieve custom mode flag.
-      const isCustom = localStorage.getItem("isCustomSchedule") === "true";
+      // IMPORTANT: Strip out URL fields from the custom schedule
+      // since URLs can be generated later.
+      const customScheduleToStore = storedCustomSchedule
+        ? storedCustomSchedule.map(item => ({
+            day: item.day,
+            passages: item.passages,
+          }))
+        : null;
 
       console.log("[Signin] Populating Firestore with all local data for new user.");
 
+      // Update Firestore with settings, default progress, custom progress, and custom schedule.
+      // The default schedule is not stored and will be generated locally.
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
-        // Save both sets of progress and schedules.
         progress: progressMap,
         customProgress: customProgressMap,
-        schedule: defaultSchedule,
-        customSchedule: customSchedule,
+        customSchedule: customScheduleToStore,
       });
 
       // Send an email verification.
