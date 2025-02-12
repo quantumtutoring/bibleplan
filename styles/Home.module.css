@@ -1,6 +1,7 @@
 /* styles/Home.module.css */
 .header {
   position: fixed;
+  height:45px;
   top: 0;
   left: 0;
   width: 100%;
@@ -54,6 +55,7 @@
 .controls {
   text-align: center;
   margin: 10px 0;
+  margin-bottom:40px;
 }
 
 .controls input {
@@ -89,7 +91,7 @@
    - Gray border
    - Darker text for contrast */
 .signoutButton {
-  padding: 5px 8px;
+  padding: 4px 8px;
   background: #fff;
   border-radius: 4px;
   transition: background 0.3s ease;

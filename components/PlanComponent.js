@@ -1,4 +1,5 @@
 // components/PlanComponent.js
+
 /**
  * PlanComponent.js
  *
@@ -11,22 +12,29 @@
  * - Creates a reading schedule based on OT and NT chapter settings.
  * - Handles user interactions such as checkbox progress updates, schedule generation,
  *   and Excel export.
- * - Provides sign‑out functionality that resets localStorage to default values
- *   (version "nasb", OT chapters "2", NT chapters "1", and cleared progress)
+ * - Provides sign‑out functionality that resets localStorage to default values.
  */
 
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
-import { saveAs } from 'file-saver';
 import { auth, db } from '../lib/firebase';
 import { useUserDataContext } from '../contexts/UserDataContext';
 import debounce from 'lodash.debounce';
+// Import Bible books data.
+import { OT_BOOKS, NT_BOOKS } from '../data/bibleBooks';
+// Import extracted components.
+import Header from './Header';
+import ControlsPanel from './ControlsPanel';
+import ScheduleTable from './ScheduleTable';
+// Import the Excel export helper.
+import { exportScheduleToExcel } from '../utils/exportExcel';
 
 export default function PlanComponent() {
-  // Log mount/unmount for debugging.
+  // ----------------------------------------------------------
+  // 0. Debug Logging on Mount/Unmount
+  // ----------------------------------------------------------
   useEffect(() => {
     console.log('PlanComponent mounted');
     return () => {
@@ -35,7 +43,7 @@ export default function PlanComponent() {
   }, []);
 
   // ----------------------------------------------------------
-  // 0. Firestore Operation Counters (reads and writes)
+  // 1. Firestore Operation Counters
   // ----------------------------------------------------------
   const [firestoreReads, setFirestoreReads] = useState(0);
   const [firestoreWrites, setFirestoreWrites] = useState(0);
@@ -52,7 +60,6 @@ export default function PlanComponent() {
     });
   };
 
-  // Log counter changes to the console.
   useEffect(() => {
     console.log(`[PlanComponent] Firestore Reads updated: ${firestoreReads}`);
   }, [firestoreReads]);
@@ -61,7 +68,6 @@ export default function PlanComponent() {
     console.log(`[PlanComponent] Firestore Writes updated: ${firestoreWrites}`);
   }, [firestoreWrites]);
 
-  // Example: count each time new userData is received as a "read" from Firestore.
   const { currentUser, userData, loading } = useUserDataContext();
   useEffect(() => {
     if (userData) {
@@ -71,54 +77,45 @@ export default function PlanComponent() {
   }, [userData]);
 
   // ----------------------------------------------------------
-  // 1. Determine Bible Version from Router Path
+  // 2. Determine Bible Version from Router Path
   // ----------------------------------------------------------
   const router = useRouter();
-  const path = router.pathname; // e.g., "/nasb", "/lsb", or "/esv"
-  let version = 'nasb'; // default version
+  const path = router.pathname; // Expected values: "/nasb", "/lsb", or "/esv"
+  let version = 'nasb';
   if (path === '/lsb') {
     version = 'lsb';
   } else if (path === '/esv') {
     version = 'esv';
   }
 
-  // Handle version change
+  // Handle version changes from the version selector.
   const handleVersionChange = (e) => {
     const newVal = e.target.value; // "nasb", "lsb", or "esv"
     console.log('[PlanComponent] Changing version to:', newVal);
     saveUserVersion(newVal, currentUser);
-    if (newVal === 'lsb') {
-      router.push('/lsb');
-    } else if (newVal === 'esv') {
-      router.push('/esv');
-    } else {
-      router.push('/nasb');
-    }
+    router.push(`/${newVal}`);
   };
 
-  // Use a ref to always have the latest currentUser.
+  // Use a ref to ensure asynchronous callbacks have access to the latest currentUser.
   const currentUserRef = useRef(currentUser);
   useEffect(() => {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
   // ----------------------------------------------------------
-  // 2. Local State Variables
+  // 3. Component State Variables
   // ----------------------------------------------------------
   const [otChapters, setOtChapters] = useState('2');
   const [ntChapters, setNtChapters] = useState('1');
   const [schedule, setSchedule] = useState([]);
   const [progressMap, setProgressMap] = useState({});
-
-  // New state: syncPending indicates whether local changes are pending sync.
   const [syncPending, setSyncPending] = useState(false);
 
-  // Refs for avoiding redundant schedule writes and handling shift‑click.
   const lastCheckedRef = useRef(null);
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
   // ----------------------------------------------------------
-  // 3. Helper Functions
+  // 4. Helper Functions
   // ----------------------------------------------------------
   function saveUserVersion(newVersion, currentUser) {
     const storedVersion = localStorage.getItem('version');
@@ -147,9 +144,6 @@ export default function PlanComponent() {
     }
   }, [version, currentUser]);
 
-  // ----------------------------------------------------------
-  // 4. Synchronize Data from Centralized Context or Local Storage
-  // ----------------------------------------------------------
   useEffect(() => {
     if (userData && userData.settings) {
       if (userData.settings.otChapters) {
@@ -177,7 +171,7 @@ export default function PlanComponent() {
       userData && userData.settings && userData.settings.ntChapters
         ? String(userData.settings.ntChapters)
         : ntChapters,
-      true // fromInit flag prevents triggering additional writes
+      true
     );
   }, [userData]);
 
@@ -276,79 +270,8 @@ export default function PlanComponent() {
       clearAllProgress();
     }
 
-    const otBooks = [
-      { name: "Gen", chapters: 50 },
-      { name: "Exod", chapters: 40 },
-      { name: "Lev", chapters: 27 },
-      { name: "Num", chapters: 36 },
-      { name: "Deut", chapters: 34 },
-      { name: "Josh", chapters: 24 },
-      { name: "Judg", chapters: 21 },
-      { name: "Ruth", chapters: 4 },
-      { name: "1 Sam", chapters: 31 },
-      { name: "2 Sam", chapters: 24 },
-      { name: "1 Kgs", chapters: 22 },
-      { name: "2 Kgs", chapters: 25 },
-      { name: "1 Chr", chapters: 29 },
-      { name: "2 Chr", chapters: 36 },
-      { name: "Ezra", chapters: 10 },
-      { name: "Neh", chapters: 13 },
-      { name: "Est", chapters: 10 },
-      { name: "Job", chapters: 42 },
-      { name: "Ps", chapters: 150 },
-      { name: "Prov", chapters: 31 },
-      { name: "Eccl", chapters: 12 },
-      { name: "Song", chapters: 8 },
-      { name: "Isa", chapters: 66 },
-      { name: "Jer", chapters: 52 },
-      { name: "Lam", chapters: 5 },
-      { name: "Ezek", chapters: 48 },
-      { name: "Dan", chapters: 12 },
-      { name: "Hos", chapters: 14 },
-      { name: "Joel", chapters: 3 },
-      { name: "Amos", chapters: 9 },
-      { name: "Obad", chapters: 1 },
-      { name: "Jonah", chapters: 4 },
-      { name: "Mic", chapters: 7 },
-      { name: "Nah", chapters: 3 },
-      { name: "Hab", chapters: 3 },
-      { name: "Zeph", chapters: 3 },
-      { name: "Hag", chapters: 2 },
-      { name: "Zech", chapters: 14 },
-      { name: "Mal", chapters: 4 },
-    ];
-    const ntBooks = [
-      { name: "Matt", chapters: 28 },
-      { name: "Mark", chapters: 16 },
-      { name: "Luke", chapters: 24 },
-      { name: "John", chapters: 21 },
-      { name: "Acts", chapters: 28 },
-      { name: "Rom", chapters: 16 },
-      { name: "1 Cor", chapters: 16 },
-      { name: "2 Cor", chapters: 13 },
-      { name: "Gal", chapters: 6 },
-      { name: "Eph", chapters: 6 },
-      { name: "Phil", chapters: 4 },
-      { name: "Col", chapters: 4 },
-      { name: "1 Thess", chapters: 5 },
-      { name: "2 Thess", chapters: 3 },
-      { name: "1 Tim", chapters: 6 },
-      { name: "2 Tim", chapters: 4 },
-      { name: "Titus", chapters: 3 },
-      { name: "Philem", chapters: 1 },
-      { name: "Heb", chapters: 13 },
-      { name: "Jas", chapters: 5 },
-      { name: "1 Pet", chapters: 5 },
-      { name: "2 Pet", chapters: 3 },
-      { name: "1 John", chapters: 5 },
-      { name: "2 John", chapters: 1 },
-      { name: "3 John", chapters: 1 },
-      { name: "Jude", chapters: 1 },
-      { name: "Rev", chapters: 22 },
-    ];
-
-    const otSchedule = generateSchedule(otBooks, otNum, totalDays, otDays < totalDays);
-    const ntSchedule = generateSchedule(ntBooks, ntNum, totalDays, ntDays < totalDays);
+    const otSchedule = generateSchedule(OT_BOOKS, otNum, totalDays, otDays < totalDays);
+    const ntSchedule = generateSchedule(NT_BOOKS, ntNum, totalDays, ntDays < totalDays);
 
     const newSchedule = [];
     for (let day = 1; day <= totalDays; day++) {
@@ -414,19 +337,15 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 5. Checkbox and Progress Handling (using lodash.debounce)
+  // 5. Checkbox and Progress Handling (Debounced Writes)
   // ----------------------------------------------------------
   const lastCheckedRef2 = useRef(null);
-
-  // Create the debounced save function only once.
   const debouncedSaveRef = useRef(null);
   useEffect(() => {
     debouncedSaveRef.current = debounce((newProgress) => {
       if (currentUserRef.current) {
-        console.log('[PlanComponent] Debounced function triggered. About to write progress:', newProgress);
-        // Log right before incrementing the write counter.
-        console.log('[PlanComponent] Calling incrementFirestoreWrites()');
-        incrementFirestoreWrites(); // This should update the write counter.
+        console.log('[PlanComponent] Debounced function triggered. Writing progress:', newProgress);
+        incrementFirestoreWrites();
         db.collection('users')
           .doc(currentUserRef.current.uid)
           .set({ progress: newProgress }, { merge: true })
@@ -439,7 +358,6 @@ export default function PlanComponent() {
           );
       }
     }, 1000);
-    
     return () => {
       debouncedSaveRef.current.cancel();
     };
@@ -462,7 +380,6 @@ export default function PlanComponent() {
     }
     setProgressMap(newProgress);
     localStorage.setItem('progressMap', JSON.stringify(newProgress));
-    // Mark as pending sync immediately.
     setSyncPending(true);
     if (currentUserRef.current && debouncedSaveRef.current) {
       debouncedSaveRef.current(newProgress);
@@ -471,61 +388,10 @@ export default function PlanComponent() {
   };
 
   // ----------------------------------------------------------
-  // 6. Excel Export Functionality
+  // 6. Excel Export Functionality (Using Helper Module)
   // ----------------------------------------------------------
-  const exportToExcel = async () => {
-    try {
-      console.log('[PlanComponent] Exporting schedule to Excel');
-      const ExcelJS = (await import('exceljs')).default;
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet('Sheet1');
-      const header = ['Day', 'Passages', 'Done'];
-      worksheet.addRow(header);
-      schedule.forEach((item) => {
-        const done = progressMap[item.day] ? 'X' : '';
-        const passageCellValue = { text: item.passages, hyperlink: item.url };
-        worksheet.addRow([item.day, passageCellValue, done]);
-      });
-      worksheet.getColumn(2).eachCell((cell, rowNumber) => {
-        if (rowNumber === 1) return;
-        if (cell.value && cell.value.hyperlink) {
-          cell.font = { color: { argb: 'FF0000FF' }, underline: true };
-        }
-      });
-      let data = [];
-      worksheet.eachRow({ includeEmpty: true }, (row) => {
-        let rowData = [];
-        row.eachCell({ includeEmpty: true }, (cell) => {
-          let cellText = '';
-          if (cell.value && typeof cell.value === 'object' && cell.value.text)
-            cellText = cell.value.text;
-          else cellText = cell.value ? cell.value.toString() : '';
-          rowData.push(cellText);
-        });
-        data.push(rowData);
-      });
-      const computeColWidths = (data, maxWidth = 30) => {
-        const colCount = data[0].length;
-        const colWidths = new Array(colCount).fill(0);
-        data.forEach((row) => {
-          for (let j = 0; j < colCount; j++) {
-            let cellText = row[j] || '';
-            colWidths[j] = Math.max(colWidths[j], cellText.length);
-          }
-        });
-        return colWidths.map((w) => ({ width: Math.min(w + 2, maxWidth) }));
-      };
-      const colWidths = computeColWidths(data, 30);
-      colWidths.forEach((cw, i) => {
-        worksheet.getColumn(i + 1).width = cw.width;
-      });
-      const buffer = await workbook.xlsx.writeBuffer();
-      const blob = new Blob([buffer], { type: 'application/octet-stream' });
-      console.log('[PlanComponent] Excel export complete. Saving file.');
-      saveAs(blob, 'bible_reading_progress.xlsx');
-    } catch (error) {
-      console.error('[PlanComponent] Error exporting to Excel:', error);
-    }
+  const handleExportExcel = () => {
+    exportScheduleToExcel(schedule, progressMap);
   };
 
   // ----------------------------------------------------------
@@ -556,92 +422,29 @@ export default function PlanComponent() {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
-      <div className={styles.header} id="auth-header">
-        {currentUser ? (
-          <div>
-            <span className={syncPending ? styles.emailPending : styles.emailSynced}>
-              {currentUser.email}
-            </span>
-            <button onClick={signOut} className={`${styles.button} ${styles.signoutButton}`}>
-              Sign Out
-            </button>
-          </div>
-        ) : (
-          <Link href="/signin">Sign in</Link>
-        )}
-      </div>
 
+      {/* Render Header */}
+      <Header currentUser={currentUser} syncPending={syncPending} signOut={signOut} />
+
+      {/* Render ControlsPanel */}
       <div className={styles.container} id="main-content">
-        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <select value={version} onChange={handleVersionChange}>
-            <option value="nasb">NASB</option>
-            <option value="lsb">LSB</option>
-            <option value="esv">ESV</option>
-          </select>
-        </div>
-        <h1>Bible Reading Planner</h1>
-        <div className={styles.controls}>
-          <label>
-            OT chapters/day (929 total):
-            <input
-              type="number"
-              step="1"
-              value={otChapters}
-              onChange={(e) => setOtChapters(e.target.value)}
-            />
-          </label>
-          <br />
-          <label>
-            NT chapters/day (260 total):
-            <input
-              type="number"
-              step="1"
-              value={ntChapters}
-              onChange={(e) => setNtChapters(e.target.value)}
-            />
-          </label>
-          <br />
-          <br />
-          <button onClick={() => updateSchedule()}>Create Schedule</button>
-          <button onClick={exportToExcel}>Export to Excel</button>
-        </div>
-        <br />
-        <div className={styles.homeTableWrapper}>
-          <table id="scheduleTable" className={styles.scheduleTable}>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Passages</th>
-                <th className={styles.checkboxCell}>Done</th>
-              </tr>
-            </thead>
-            <tbody id="scheduleBody">
-              {schedule.map((item) => (
-                <tr key={item.day} id={`day-${item.day}`}>
-                  <td>{item.day}</td>
-                  <td>
-                    <a
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hyperlink"
-                    >
-                      {item.passages}
-                    </a>
-                  </td>
-                  <td className={styles.checkboxCell}>
-                    <input
-                      type="checkbox"
-                      id={`check-day-${item.day}`}
-                      checked={!!progressMap[item.day]}
-                      onClick={(e) => handleCheckboxChange(item.day, e.target.checked, e)} //use onClick instead of onChange for shift-click
-                    />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ControlsPanel
+          version={version}
+          handleVersionChange={handleVersionChange}
+          otChapters={otChapters}
+          setOtChapters={setOtChapters}
+          ntChapters={ntChapters}
+          setNtChapters={setNtChapters}
+          updateSchedule={updateSchedule}
+          exportToExcel={handleExportExcel}
+        />
+
+        {/* Render ScheduleTable */}
+        <ScheduleTable
+          schedule={schedule}
+          progressMap={progressMap}
+          handleCheckboxChange={handleCheckboxChange}
+        />
       </div>
     </div>
   );
