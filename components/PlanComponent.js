@@ -196,41 +196,35 @@ export default function PlanComponent() {
     }
   }, [currentUser, loading]);
 
-  const saveUserSettings = (ot, nt) => {
-    console.log('[PlanComponent] Saving user settings:', ot, nt);
+  // Combined function: Update user settings and clear progress in one Firestore write
+  const updateUserData = (ot, nt) => {
+    // Save the new settings to localStorage
     localStorage.setItem('otChapters', String(ot));
     localStorage.setItem('ntChapters', String(nt));
-    if (currentUser) {
-      console.log('[PlanComponent] Writing settings to Firestore for user:', currentUser.uid);
-      incrementFirestoreWrites();
-      db.collection('users')
-        .doc(currentUser.uid)
-        .set({ settings: { otChapters: ot, ntChapters: nt } }, { merge: true })
-        .then(() => console.log('[PlanComponent] Settings write successful'))
-        .catch((error) => console.error('[PlanComponent] Error saving settings:', error));
-    }
-  };
-
-  const clearAllProgress = () => {
-    console.log('[PlanComponent] Clearing all progress.');
-    setProgressMap({});
-    localStorage.removeItem('progressMap');
+    // Clear the progress data from localStorage
+    localStorage.setItem('progressMap', JSON.stringify({}));
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem('check-day-' + i);
     }
+    
+    // If a user is signed in, perform a combined Firestore update
     if (currentUser) {
-      console.log('[PlanComponent] Clearing progress in Firestore for user:', currentUser.uid);
+      console.log('[PlanComponent] Combining settings and progress update for user:', currentUser.uid);
       incrementFirestoreWrites();
       db.collection('users')
         .doc(currentUser.uid)
-        .update({ progress: {} })
-        .then(() => console.log('[PlanComponent] Progress cleared in Firestore'))
-        .catch((error) =>
-          console.error('[PlanComponent] Error clearing progress in Firestore:', error)
-        );
+        .set({
+          settings: { otChapters: ot, ntChapters: nt },
+          progress: {} // This clears the progress
+        }, { merge: true })
+        .then(() => console.log('[PlanComponent] Combined update successful'))
+        .catch((error) => console.error('[PlanComponent] Error with combined update:', error));
     }
   };
 
+  // ----------------------------------------------------------
+  // 5. Schedule Generation and Progress Handling
+  // ----------------------------------------------------------
   const updateSchedule = (ot = otChapters, nt = ntChapters, fromInit = false) => {
     console.log('[PlanComponent] updateSchedule called with OT:', ot, 'NT:', nt, 'fromInit:', fromInit);
     const otNum = parseInt(ot, 10);
@@ -266,8 +260,8 @@ export default function PlanComponent() {
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
     if (!fromInit) {
-      saveUserSettings(otNum, ntNum);
-      clearAllProgress();
+      // Use the combined update function to update settings and clear progress
+      updateUserData(otNum, ntNum);
     }
 
     const otSchedule = generateSchedule(OT_BOOKS, otNum, totalDays, otDays < totalDays);
@@ -294,51 +288,7 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
   };
 
-  const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
-    let scheduleArr = [];
-    let bookIdx = 0,
-      chapter = 1;
-    for (let day = 1; day <= totalDays; day++) {
-      let daily = [];
-      let remaining = chaptersPerDay;
-      while (remaining > 0) {
-        if (bookIdx >= books.length) {
-          if (cycle) {
-            bookIdx = 0;
-            chapter = 1;
-          } else break;
-        }
-        const book = books[bookIdx].name;
-        const total = books[bookIdx].chapters;
-        const available = total - chapter + 1;
-        if (available <= remaining) {
-          daily.push(
-            available === 1
-              ? `${book} ${chapter}`
-              : `${book} ${chapter}-${total}`
-          );
-          remaining -= available;
-          bookIdx++;
-          chapter = 1;
-        } else {
-          const end = chapter + remaining - 1;
-          daily.push(
-            remaining === 1
-              ? `${book} ${chapter}`
-              : `${book} ${chapter}-${end}`
-          );
-          chapter = end + 1;
-          remaining = 0;
-        }
-      }
-      scheduleArr.push(daily.join(', '));
-    }
-    return scheduleArr;
-  };
-
-  // ----------------------------------------------------------
-  // 5. Checkbox and Progress Handling (Debounced Writes)
-  // ----------------------------------------------------------
+  // Debounced save function for checkbox progress updates
   const lastCheckedRef2 = useRef(null);
   const debouncedSaveRef = useRef(null);
   useEffect(() => {
@@ -449,3 +399,46 @@ export default function PlanComponent() {
     </div>
   );
 }
+
+// Helper function to generate the schedule (remains unchanged)
+const generateSchedule = (books, chaptersPerDay, totalDays, cycle) => {
+  let scheduleArr = [];
+  let bookIdx = 0,
+    chapter = 1;
+  for (let day = 1; day <= totalDays; day++) {
+    let daily = [];
+    let remaining = chaptersPerDay;
+    while (remaining > 0) {
+      if (bookIdx >= books.length) {
+        if (cycle) {
+          bookIdx = 0;
+          chapter = 1;
+        } else break;
+      }
+      const book = books[bookIdx].name;
+      const total = books[bookIdx].chapters;
+      const available = total - chapter + 1;
+      if (available <= remaining) {
+        daily.push(
+          available === 1
+            ? `${book} ${chapter}`
+            : `${book} ${chapter}-${total}`
+        );
+        remaining -= available;
+        bookIdx++;
+        chapter = 1;
+      } else {
+        const end = chapter + remaining - 1;
+        daily.push(
+          remaining === 1
+            ? `${book} ${chapter}`
+            : `${book} ${chapter}-${end}`
+        );
+        chapter = end + 1;
+        remaining = 0;
+      }
+    }
+    scheduleArr.push(daily.join(', '));
+  }
+  return scheduleArr;
+};
