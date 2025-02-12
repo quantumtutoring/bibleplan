@@ -19,7 +19,7 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
-import { auth, db } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { useUserDataContext } from '../contexts/UserDataContext';
 import debounce from 'lodash.debounce';
 // Import Bible books data.
@@ -31,6 +31,8 @@ import ScheduleTable from './ScheduleTable';
 import { generateSchedule } from '../utils/generateSchedule';
 // Import the Excel export helper.
 import { exportScheduleToExcel } from '../utils/exportExcel';
+// Import our new Firestore sync hook.
+import useUserDataSync from '../hooks/useUserDataSync';
 
 export default function PlanComponent() {
   // ----------------------------------------------------------
@@ -116,8 +118,10 @@ export default function PlanComponent() {
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
   // ----------------------------------------------------------
-  // 4. Helper Functions
+  // 4. Helper Functions (using the new Firestore sync hook)
   // ----------------------------------------------------------
+  const { updateUserData } = useUserDataSync();
+
   function saveUserVersion(newVersion, currentUser) {
     const storedVersion = localStorage.getItem('version');
     if (storedVersion === newVersion) {
@@ -127,11 +131,9 @@ export default function PlanComponent() {
     console.log('[PlanComponent] Saving version to localStorage and Firestore:', newVersion);
     localStorage.setItem('version', newVersion);
     if (currentUser) {
-      console.log('[PlanComponent] Writing version to Firestore for user:', currentUser.uid);
+      // Use the hook to update the version.
       incrementFirestoreWrites();
-      db.collection('users')
-        .doc(currentUser.uid)
-        .set({ settings: { version: newVersion } }, { merge: true })
+      updateUserData(currentUser.uid, { settings: { version: newVersion } })
         .then(() => console.log('[PlanComponent] Version write successful'))
         .catch((err) =>
           console.error('[PlanComponent] Error saving version to Firestore:', err)
@@ -197,33 +199,47 @@ export default function PlanComponent() {
     }
   }, [currentUser, loading]);
 
-  // Combined function: Update user settings and clear progress in one Firestore write
-  const updateUserData = (ot, nt) => {
-    // Save the new settings to localStorage
-    localStorage.setItem('otChapters', String(ot));
-    localStorage.setItem('ntChapters', String(nt));
-    // Clear the progress data from localStorage
-    localStorage.setItem('progressMap', JSON.stringify({}));
+  // Combined function: Update user settings, progress, and schedule in one call.
+  const updateUserDoc = (data) => {
+    // Save relevant data to localStorage.
+    if (data.settings) {
+      if (data.settings.otChapters !== undefined) {
+        localStorage.setItem('otChapters', String(data.settings.otChapters));
+      }
+      if (data.settings.ntChapters !== undefined) {
+        localStorage.setItem('ntChapters', String(data.settings.ntChapters));
+      }
+      if (data.settings.version !== undefined) {
+        localStorage.setItem('version', data.settings.version);
+      }
+    }
+    if (data.progress !== undefined) {
+      localStorage.setItem('progressMap', JSON.stringify(data.progress));
+    }
+    // Also clear out any individual check-day items.
     for (let i = 1; i < 1000; i++) {
       localStorage.removeItem('check-day-' + i);
     }
-    
-    // Clear the progress state regardless of sign-in status.
+    // Clear local progress state.
     setProgressMap({});
-    
-    // If a user is signed in, perform a combined Firestore update
+
+    // If a user is signed in, update Firestore in one call.
     if (currentUser) {
-      console.log('[PlanComponent] Combining settings and progress update for user:', currentUser.uid);
+      console.log('[PlanComponent] Updating user document for user:', currentUser.uid, data);
       incrementFirestoreWrites();
-      db.collection('users')
-        .doc(currentUser.uid)
-        .set({
-          settings: { otChapters: ot, ntChapters: nt },
-          progress: {} // This clears the progress
-        }, { merge: true })
-        .then(() => console.log('[PlanComponent] Combined update successful'))
-        .catch((error) => console.error('[PlanComponent] Error with combined update:', error));
+      updateUserData(currentUser.uid, data)
+        .then(() => console.log('[PlanComponent] User document update successful'))
+        .catch((error) => console.error('[PlanComponent] Error updating user document:', error));
     }
+  };
+
+  // In place of the old updateUserData function, we now use updateUserDoc.
+  // For example, when generating a new schedule, we might update settings and clear progress:
+  const updateCombinedUserData = (ot, nt) => {
+    updateUserDoc({
+      settings: { otChapters: ot, ntChapters: nt },
+      progress: {} // Clear progress.
+    });
   };
 
   // ----------------------------------------------------------
@@ -264,8 +280,8 @@ export default function PlanComponent() {
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
     if (!fromInit) {
-      // Use the combined update function to update settings and clear progress
-      updateUserData(otNum, ntNum);
+      // Update the user document (settings and clear progress) in one call.
+      updateCombinedUserData(otNum, ntNum);
     }
 
     const otSchedule = generateSchedule(OT_BOOKS, otNum, totalDays, otDays < totalDays);
@@ -292,7 +308,7 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
   };
 
-  // Debounced save function for checkbox progress updates
+  // Debounced save function for checkbox progress updates.
   const lastCheckedRef2 = useRef(null);
   const debouncedSaveRef = useRef(null);
   useEffect(() => {
@@ -300,9 +316,8 @@ export default function PlanComponent() {
       if (currentUserRef.current) {
         console.log('[PlanComponent] Debounced function triggered. Writing progress:', newProgress);
         incrementFirestoreWrites();
-        db.collection('users')
-          .doc(currentUserRef.current.uid)
-          .set({ progress: newProgress }, { merge: true })
+        // Use the unified update function to update progress.
+        updateUserData(currentUserRef.current.uid, { progress: newProgress })
           .then(() => {
             console.log('[PlanComponent] Progress write successful');
             setSyncPending(false);

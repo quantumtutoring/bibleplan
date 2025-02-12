@@ -13,9 +13,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
 import Link from "next/link";
-import { firebase, auth, db } from "../lib/firebase"; // Using compat Firebase
+import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
 import { useUserDataContext } from "../contexts/UserDataContext";
+// Import the unified Firestore write hook.
+import useUserDataSync from "../hooks/useUserDataSync";
 
 export default function Signin() {
   // State variables for email, password, and user feedback.
@@ -27,46 +29,35 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
 
   // Consume the centralized user data.
-  const { currentUser, userData, loading } = useUserDataContext();
+  const { currentUser, loading } = useUserDataContext();
+  // Get the unified update function from our hook.
+  const { updateUserData } = useUserDataSync();
 
   /**
    * routeToVersion
    *
-   * Uses the user data from context if available; otherwise, falls back to a one‑time Firestore fetch.
-   * Then it updates localStorage with the progress map and routes the user based on their saved Bible version.
+   * Routes the user based on their stored Bible version in localStorage.
    */
   const routeToVersion = async (uid) => {
-    let userDocData = userData;
-    if (!userDocData) {
-      console.log("[Signin] User data not in context; performing one-time get.");
-      const docRef = db.collection("users").doc(uid);
-      const docSnap = await docRef.get();
-      userDocData = docSnap.exists ? docSnap.data() : null;
-    }
+    console.log("[Signin] Routing user with uid:", uid);
+    const storedVersion = localStorage.getItem("version");
     let route = "/";
-    if (userDocData) {
-      console.log("[Signin] User document data:", userDocData);
-      localStorage.setItem("progressMap", JSON.stringify(userDocData?.progress || {}));
-      const storedVersion = userDocData?.settings?.version;
-      if (storedVersion === "lsb") route = "/lsb";
-      else if (storedVersion === "esv") route = "/esv";
-      else if (storedVersion === "nasb") route = "/nasb";
-    }
+    if (storedVersion === "lsb") route = "/lsb";
+    else if (storedVersion === "esv") route = "/esv";
+    else if (storedVersion === "nasb") route = "/nasb";
     console.log("[Signin] Routing user to:", route);
     window.location.href = route;
   };
 
-  // useEffect: Check authentication state via the centralized context.
+  // useEffect: Check authentication state.
   useEffect(() => {
     if (loading) return;
-    // If a user is signed in and their email is verified, route them immediately.
     if (currentUser && currentUser.emailVerified) {
       routeToVersion(currentUser.uid);
     } else {
-      // Otherwise, allow the sign‑in form to render.
       setShouldRender(true);
     }
-  }, [loading, currentUser, userData]);
+  }, [loading, currentUser]);
 
   // Handler: Sign In with Email/Password.
   const handleSignIn = async (e) => {
@@ -78,10 +69,9 @@ export default function Signin() {
       const user = userCredential.user;
       console.log("[Signin] Sign in successful:", user);
       if (!user.emailVerified) {
-        await user.sendEmailVerification(); // This actually sends the email.
-        setMessage("Your email address has not been verified. A new verification email has been sent to your inbox. Please verify your email and then sign in again.");
+        await user.sendEmailVerification();
+        setMessage("Your email is not verified. A verification email has been sent.");
         setMsgType("error");
-        // Sign the user out so they cannot access the app until verified.
         await auth.signOut();
       } else {
         setMessage("Sign in successful!");
@@ -115,7 +105,7 @@ export default function Signin() {
       const user = userCredential.user;
       console.log("[Signin] Account created:", user);
 
-      // Retrieve default settings from localStorage (or use defaults).
+      // Retrieve default settings from localStorage or use defaults.
       const otChapters = localStorage.getItem("otChapters") || "2";
       const ntChapters = localStorage.getItem("ntChapters") || "1";
       const version = localStorage.getItem("version") || "nasb";
@@ -124,20 +114,18 @@ export default function Signin() {
         : {};
 
       console.log("[Signin] Populating Firestore with default settings for new user.");
-      // Populate Firestore with the new user's settings and progress.
-      await db.collection("users").doc(user.uid).set(
-        {
-          settings: { otChapters, ntChapters, version },
-          progress: progressMap,
-        },
-        { merge: true }
-      );
+
+      // Use the unified hook to update the user's document.
+      await updateUserData(user.uid, {
+        settings: { otChapters, ntChapters, version },
+        progress: progressMap,
+      });
 
       // Send an email verification.
       await user.sendEmailVerification();
-      setMessage("Verification email sent. Please check your inbox and verify your email address.");
+      setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
-      // Optionally, you may sign the user out immediately.
+      // Optionally, sign the user out immediately.
       await auth.signOut();
     } catch (error) {
       console.error("[Signin] Sign up error:", error);
@@ -203,7 +191,7 @@ export default function Signin() {
     }
   };
 
-  // Render nothing until our authentication check is complete.
+  // Render nothing until the authentication check is complete.
   if (!shouldRender) return null;
 
   return (
