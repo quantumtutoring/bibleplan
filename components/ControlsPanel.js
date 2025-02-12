@@ -4,8 +4,8 @@ import styles from '../styles/Home.module.css';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const ControlsPanel = ({
-  version,
-  handleVersionChange,
+  version,               // version is passed from the parent (e.g. 'nasb', 'lsb', or 'esv')
+  handleVersionChange,   // function to handle changes – navigates to the new URL
   otChapters,
   setOtChapters,
   ntChapters,
@@ -17,11 +17,11 @@ const ControlsPanel = ({
   setIsCustomSchedule
 }) => {
   const { getItem, setItem } = useLocalStorage();
-  // Local state for the custom plan text
+  // Local state for the custom plan text remains managed here.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // On mount, restore the custom text from local storage.
+  // On mount, restore the custom text (if any) from local storage.
   useEffect(() => {
     const storedText = getItem('customPlanText', '');
     setCustomPlanText(storedText);
@@ -38,7 +38,6 @@ const ControlsPanel = ({
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
       // Exiting custom mode: regenerate default schedule without clearing its progress.
-      // Note: We pass preserveProgress=true so that updateCombinedUserData does NOT clear progress.
       updateSchedule(otChapters, ntChapters, false, true, false, true);
       setIsCustomSchedule(false);
     } else {
@@ -55,13 +54,20 @@ const ControlsPanel = ({
 
   const handleCreateSchedule = () => {
     if (isCustomSchedule) {
-      // Build a custom schedule from the textarea input.
+      // Build a custom schedule from the textarea input using the current version.
       const lines = customPlanText
         .split('\n')
         .map((line) => line.trim())
         .filter((line) => line !== '');
       const customScheduleArr = lines.map((line, index) => {
-        const url = `https://www.literalword.com/?q=${encodeURIComponent(line)}`;
+        let url;
+        if (version === 'lsb') {
+          url = `https://read.lsbible.org/?q=${encodeURIComponent(line)}`;
+        } else if (version === 'esv') {
+          url = `https://esv.literalword.com/?q=${encodeURIComponent(line)}`;
+        } else {
+          url = `https://www.literalword.com/?q=${encodeURIComponent(line)}`;
+        }
         return { day: index + 1, passages: line, url };
       });
       // Creating a new custom schedule clears its progress.
@@ -75,6 +81,7 @@ const ControlsPanel = ({
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+        {/* The select dropdown uses the version prop directly */}
         <select value={version} onChange={handleVersionChange}>
           <option value="nasb">NASB</option>
           <option value="lsb">LSB</option>
@@ -117,8 +124,7 @@ const ControlsPanel = ({
             </label>
           </div>
         )}
-        <br />
-        <br />
+
         <div>
           <button onClick={handleCreateSchedule}>Create Schedule</button>
           <button onClick={exportToExcel}>Export to Excel</button>
