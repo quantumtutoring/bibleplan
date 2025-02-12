@@ -23,55 +23,41 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 ```plaintext
 / (project root)
 ├── components/             
-│   ├── ControlsPanel.js    
-│   │   // Renders input controls (e.g., chapter settings, buttons) for the planner.
-│   ├── Header.js           
-│   │   // Displays the app header, user info, and sign‑out button.
-│   ├── PlanComponent.js    
-│   │   // The main Bible reading planner component. 
-│   │   // Integrates schedule generation, progress updates, Firestore writes (via hooks),
-│   │   // and localStorage (via useLocalStorage) to manage user settings and progress.
-│   └── ScheduleTable.js    
-│       // Renders the reading schedule in a table format with checkboxes for progress.
+│   ├── Header.js              // Displays user info (e.g., email, sign‑in/sign‑out controls)
+│   ├── ControlsPanel.js       // Contains Bible version selector, chapter input controls, and buttons (generate schedule, export Excel)
+│   ├── ScheduleTable.js       // Renders the generated reading schedule in a table with checkboxes for tracking progress
+│   └── PlanComponent.js       // Main planner component that orchestrates UI, schedule generation, and Excel export
 │
 ├── contexts/               
-│   └── UserDataContext.js  
-│       // Provides a centralized context for user data (current user, Firestore data, loading state).
-│       // Ensures only one real-time snapshot listener is attached to the user's Firestore document.
+│   └── UserDataContext.js     // Provides a React context for user authentication and Firestore data across the app
+│
+├── data/                    
+│   └── bibleBooks.js          // Exports OT_BOOKS and NT_BOOKS arrays containing Bible books and chapter counts
 │
 ├── hooks/                  
-│   ├── useLocalStorage.js  
-│   │   // Custom hook that abstracts localStorage interactions (getItem, setItem, removeItem, clear).
-│   ├── useUserData.js      
-│   │   // Sets up a real-time listener (onSnapshot) to fetch user data from Firestore.
-│   └── useUserDataSync.js  
-│       // Unified hook that centralizes all Firestore write operations for the user’s document.
-│       // Handles writes for version updates, settings/progress updates, and sign‑up data population.
+│   ├── useLocalStorage.js     // Custom hook that abstracts localStorage interactions (getItem, setItem, removeItem, clear)
+│   ├── useUserData.js         // Custom hook that sets up Firebase authentication and Firestore snapshot listeners
+│   └── useUserDataSync.js     // Unified hook that centralizes all Firestore write operations for the user’s document
 │
 ├── lib/                    
-│   └── firebase.js         
-│       // Initializes Firebase and exports configured instances (auth, db, etc.) for use throughout the app.
+│   └── firebase.js            // Firebase configuration and initialization (auth, Firestore, etc.)
 │
 ├── pages/                  
-│   ├── _app.js             
-│   │   // The top-level Next.js component that wraps all pages with providers (e.g., UserDataProvider).
-│   ├── index.js            
-│   │   // The landing/routing page that checks authentication and stored Bible version.
-│   │   // Routes signed‑in users using Firestore data and guest users using localStorage (via useLocalStorage).
-│   └── signin.js           
-│       // Handles user authentication (sign‑in, sign‑up, password reset, Google sign‑in).
-│       // Uses the unified Firestore write hook to update new user data.
+│   ├── _app.js                // Custom App component that wraps all pages with the UserDataProvider
+│   ├── index.js               // Landing/routing page that checks for a saved Bible version and redirects accordingly
+│   ├── signin.js              // Sign‑in page that handles email/password, Google sign‑in, and password reset
+│   ├── esv.js                 // Renders PlanComponent for the ESV Bible version
+│   ├── lsb.js                 // Renders PlanComponent for the LSB Bible version
+│   └── nasb.js                // Renders PlanComponent for the NASB Bible version
 │
 ├── styles/                 
-│   └── globals.css         
-│       // Global CSS styles applied to the entire application.
+│   ├── globals.css            // Global CSS styles and variables
+│   ├── Home.module.css        // Styles for PlanComponent, ControlsPanel, and ScheduleTable
+│   └── Signin.module.css      // Styles for the sign‑in page
 │
 └── utils/                  
-    ├── exportExcel.js      
-    │   // Helper module to export the generated schedule into an Excel file.
-    └── generateSchedule.js 
-        // Contains the function to generate a Bible reading schedule based on the list of books,
-        // chapters per day, total days, and whether to cycle through books.
+    ├── exportExcel.js         // Helper module to export the generated schedule into an Excel file
+    └── generateSchedule.js    // Function to generate a Bible reading schedule based on books, chapters per day, etc.
 ```
 
 
