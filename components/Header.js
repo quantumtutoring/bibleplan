@@ -31,13 +31,8 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
           >
             Sign Out
           </button>
-          <button
-            onClick={exportToExcel}
-            className={`${styles.button} ${styles.signoutButton}`}
 
-          >
-            Export to Excel
-          </button>
+
         </div>
       ) : (
         <Link href="/signin">Sign in</Link>

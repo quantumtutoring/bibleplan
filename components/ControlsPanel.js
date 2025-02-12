@@ -126,10 +126,9 @@ const ControlsPanel = ({
         )}
 
         <div>
-          <button onClick={handleCreateSchedule}>Create Schedule</button>
-          <button onClick={exportToExcel}>Export to Excel</button>
+          <button onClick={handleCreateSchedule}>{isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}</button>
           <button onClick={toggleCustomizeMode}>
-            {isCustomSchedule ? 'Cancel' : 'Custom Plan'}
+            {isCustomSchedule ? 'Back to Default' : 'Custom Planner'}
           </button>
         </div>
       </div>
