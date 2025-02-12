@@ -40,16 +40,20 @@ const ScheduleTable = ({ schedule, progressMap, handleCheckboxChange }) => {
                   {item.passages}
                 </a>
               </td>
-              <td className={styles.checkboxCell}>
+              <td className={styles.checkboxCell} onClick={(e) => 
+                {
+                // Toggle the current state for the given day
+                const newChecked = !progressMap[item.day];
+                handleCheckboxChange(item.day, newChecked, e);
+                }}>
                 <input
                   type="checkbox"
                   id={`check-day-${item.day}`}
                   checked={!!progressMap[item.day]}
-                  onClick={(e) =>
-                    handleCheckboxChange(item.day, e.target.checked, e)
-                  }
+                  readOnly
                 />
-              </td>
+            </td>
+
             </tr>
           ))}
         </tbody>
