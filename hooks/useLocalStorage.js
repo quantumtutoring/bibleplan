@@ -1,19 +1,6 @@
 // hooks/useLocalStorage.js
 import { useCallback } from 'react';
 
-/**
- * useLocalStorage
- *
- * A custom hook that provides helper functions for interacting with localStorage.
- * This hook abstracts JSON parsing/stringifying, error handling, and provides a
- * consistent API for getting, setting, removing items, and clearing storage.
- *
- * Returns an object with the following functions:
- *  - getItem(key, defaultValue): Retrieves and parses the value for a given key.
- *  - setItem(key, value): Stringifies and stores the given value under the key.
- *  - removeItem(key): Removes the given key from localStorage.
- *  - clear(): Clears all localStorage.
- */
 export default function useLocalStorage() {
   const getItem = useCallback((key, defaultValue = null) => {
     if (typeof window === 'undefined') return defaultValue;
@@ -21,8 +8,10 @@ export default function useLocalStorage() {
       const item = window.localStorage.getItem(key);
       return item ? JSON.parse(item) : defaultValue;
     } catch (error) {
-      console.error(`Error reading localStorage key "${key}":`, error);
-      return defaultValue;
+      console.error(`Error parsing localStorage key "${key}":`, error);
+      // Fallback: return the raw stored value if JSON parsing fails.
+      const raw = window.localStorage.getItem(key);
+      return raw !== null ? raw : defaultValue;
     }
   }, []);
 
