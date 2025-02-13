@@ -18,7 +18,7 @@ export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem } = useLocalStorage();
   const router = useRouter();
 
-  // Track if we've mounted client-side.
+  // Track client-side mount.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -32,9 +32,9 @@ export default function PlanComponent({ forcedMode }) {
   const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', '1')));
   const [isCustomSchedule, setIsCustomSchedule] = useState(false);
 
-  // NEW: Flag so that we load the Firestore version only on first sign in.
-  const [initialVersionLoaded, setInitialVersionLoaded] = useState(false);
-
+  // NEW: Flag to load Firestore mode (isCustomSchedule) only on first sign in.
+  const [initialModeLoaded, setInitialModeLoaded] = useState(false);
+  
   // Schedules & progress.
   const [schedule, setSchedule] = useState([]);
   const [defaultProgressMap, setDefaultProgressMap] = useState({});
@@ -103,7 +103,6 @@ export default function PlanComponent({ forcedMode }) {
   useEffect(() => { setItem('ntChapters', String(ntChapters)); }, [ntChapters, setItem]);
 
   // Merge Firestore settings (OT, NT) into state when signed in.
-  // (We handle version separately.)
   useEffect(() => {
     if (currentUser && userData && userData.settings) {
       const { otChapters: fsOT, ntChapters: fsNT } = userData.settings;
@@ -120,27 +119,25 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentUser, userData?.settings, otChapters, ntChapters, setItem]);
 
-  // Merge Firestore version only on first sign in.
+  // Merge Firestore version only once (on first sign in).
   useEffect(() => {
-    if (currentUser && userData && userData.settings && !initialVersionLoaded) {
-      const fsVersion = userData.settings.version;
-      if (fsVersion && fsVersion !== currentVersion) {
-        console.log('[PlanComponent] Setting version from Firestore on first sign in:', fsVersion);
-        setCurrentVersion(fsVersion);
-      }
-      setInitialVersionLoaded(true);
+    if (currentUser && userData && userData.settings && !initialModeLoaded) {
+      const fsMode = userData.isCustomSchedule; // mode from firestore
+      console.log('[PlanComponent] Loading mode from Firestore on first sign in:', fsMode);
+      setIsCustomSchedule(fsMode);
+      setInitialModeLoaded(true);
     }
-  }, [currentUser, userData?.settings, initialVersionLoaded]);
+  }, [currentUser, userData, initialModeLoaded]);
 
-  // After the initial load, update Firestore whenever currentVersion changes.
+  // After the initial mode load, update Firestore when currentVersion changes.
   useEffect(() => {
-    if (currentUser && initialVersionLoaded) {
+    if (currentUser && initialModeLoaded) {
       updateUserData(currentUser.uid, { settings: { version: currentVersion } })
         .catch(error => console.error('[PlanComponent] Error updating version in Firestore:', error));
     }
-  }, [currentVersion, currentUser, updateUserData, initialVersionLoaded]);
+  }, [currentVersion, currentUser, updateUserData, initialModeLoaded]);
 
-  // Merge Firestore progress, custom schedule, and isCustomSchedule.
+  // Merge Firestore progress, custom schedule, and isCustomSchedule (except for mode, which we load only initially).
   useEffect(() => {
     if (!userData) return;
     if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
@@ -155,10 +152,8 @@ export default function PlanComponent({ forcedMode }) {
       console.log('[PlanComponent] Restoring custom schedule from Firestore.');
       setCustomSchedule(userData.customSchedule);
     }
-    if (typeof userData.isCustomSchedule === 'boolean' && userData.isCustomSchedule !== isCustomSchedule) {
-      setIsCustomSchedule(userData.isCustomSchedule);
-    }
-  }, [userData, setItem, defaultProgressMap, customProgressMap, customSchedule, isCustomSchedule]);
+    // Note: We no longer merge isCustomSchedule after initial load.
+  }, [userData, setItem, defaultProgressMap, customProgressMap, customSchedule]);
 
   const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
   const activeSchedule = isCustomSchedule ? customSchedule : schedule;
