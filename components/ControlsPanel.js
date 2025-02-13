@@ -37,7 +37,7 @@ const ControlsPanel = ({
 
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
-      // Exiting custom mode: regenerate default schedule.
+      // Exiting custom mode: regenerate the default schedule from settings.
       updateSchedule(otChapters, ntChapters, false, true, false);
       setIsCustomSchedule(false);
     } else {
@@ -91,6 +91,7 @@ const ControlsPanel = ({
       });
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
+      // For default mode, regenerate the schedule from the current settings.
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
   };
@@ -108,7 +109,11 @@ const ControlsPanel = ({
       <div className={styles.controls}>
         {/* Planner mode selector */}
         <span>
-          <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
+          <select
+            className={styles.plannerSelector}
+            onChange={toggleCustomizeMode}
+            value={isCustomSchedule ? 'custom' : 'default'}
+          >
             <option value="default">Default Planner</option>
             <option value="custom">Custom Planner</option>
           </select>
@@ -131,7 +136,7 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={otChapters}
-                onChange={(e) => setOtChapters(e.target.value)}
+                onChange={(e) => setOtChapters(Number(e.target.value))}
               />
             </label>
             <br />
@@ -141,16 +146,15 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={ntChapters}
-                onChange={(e) => setNtChapters(e.target.value)}
+                onChange={(e) => setNtChapters(Number(e.target.value))}
               />
             </label>
           </div>
         )}
         <div>
           <button onClick={handleCreateSchedule}>
-            {isCustomSchedule ? 'Generate Schedule' : 'Generate Schedule'}
+            Generate Schedule
           </button>
-
           <button onClick={exportToExcel}>
             Export to Excel
           </button>

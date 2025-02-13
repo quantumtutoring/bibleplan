@@ -12,7 +12,7 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
       await signOut();
 
       // Remove only user-specific keys from localStorage.
-      localStorage.removeItem("defaultSchedule");
+      // Note: "defaultSchedule" is no longer stored.
       localStorage.removeItem("customSchedule");
       localStorage.removeItem("progressMap");
       localStorage.removeItem("customProgressMap");
@@ -42,7 +42,6 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
           >
             Sign Out
           </button>
-
         </div>
       ) : (
         <Link href="/signin">Sign in</Link>
