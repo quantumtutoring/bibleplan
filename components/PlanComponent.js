@@ -280,8 +280,7 @@ export default function PlanComponent() {
       const linkText = `${otText}, ${ntText}`;
       newSchedule.push({ day, passages: linkText, url });
     }
-    // Create a stripped version (without URLs) for Firestore.
-    const strippedSchedule = newSchedule.map(({ day, passages }) => ({ day, passages }));
+    // Note: We still store the full default schedule locally.
     setIsCustomSchedule(false);
     setItem('isCustomSchedule', false);
     if (clearProgress) {
@@ -291,11 +290,10 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
     setItem('defaultSchedule', newSchedule);
 
-    // Update Firestore with settings, stripped schedule, and mode.
+    // Update Firestore with only settings and mode (omit default schedule data).
     if (currentUser) {
       const updateData = {
         settings: { otChapters: otNum, ntChapters: ntNum },
-        schedule: strippedSchedule,
         isCustomSchedule: false
       };
       if (clearProgress) {
@@ -303,8 +301,8 @@ export default function PlanComponent() {
       }
       incrementFirestoreWrites();
       updateUserData(currentUser.uid, updateData)
-        .then(() => console.log('[PlanComponent] Default schedule and settings saved to Firestore'))
-        .catch(error => console.error('[PlanComponent] Error saving default schedule:', error));
+        .then(() => console.log('[PlanComponent] Default settings saved to Firestore'))
+        .catch(error => console.error('[PlanComponent] Error saving default settings:', error));
     }
   };
 
