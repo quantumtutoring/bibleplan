@@ -1,28 +1,29 @@
 // components/Header.js
-import Link from 'next/link';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import styles from '../styles/Home.module.css';
+// Import Firebase auth directly here
+import { auth } from '../lib/firebase';
 
-const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
+export default function Header({ currentUser, syncPending, exportToExcel }) {
   const router = useRouter();
 
   const handleSignOut = async () => {
     try {
-      // Sign out from Firebase.
-      await signOut();
+      // 1) Sign out from Firebase
+      await auth.signOut();
 
-      // Remove only user-specific keys from localStorage.
-      // Note: "defaultSchedule" is no longer stored.
+      // 2) Remove only user-specific keys from localStorage
       localStorage.removeItem("customSchedule");
       localStorage.removeItem("progressMap");
       localStorage.removeItem("customProgressMap");
       localStorage.removeItem("isCustomSchedule");
       localStorage.removeItem("customPlanText");
 
-      // Navigate to the home page.
+      // 3) Navigate to the home page
       await router.push('/');
-      
-      // Force a full reload so that the PlanComponent remounts.
+
+      // 4) Force a full reload so that the PlanComponent remounts fresh
       router.reload();
     } catch (error) {
       console.error("Sign out error:", error);
@@ -48,6 +49,4 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
       )}
     </div>
   );
-};
-
-export default Header;
+}

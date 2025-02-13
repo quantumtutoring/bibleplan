@@ -1,11 +1,11 @@
 // pages/signin.js
 /**
- * Signin.js - Main Landing/Routing Page
+ * Signin.js - Handles user authentication.
  *
- * This page handles user authentication. It uses the centralized ListenFireStore to check
- * if a user is already signed in. If a user with a verified email is found, it immediately
- * routes them to "/" (or wherever you want).
- * Otherwise, it renders the sign-in form with email/password, Google sign-in, and password reset.
+ * After successful sign-in:
+ * 1. We do a one-time Firestore read to check the user's `isCustomSchedule` flag.
+ * 2. Based on that, we call `router.push("/custom")` or `router.push("/")`.
+ *    This simulates the user manually typing the route (no query params).
  */
 
 import { useEffect, useState } from "react";
@@ -14,11 +14,16 @@ import Head from "next/head";
 import Link from "next/link";
 import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
+
+// 1) Import Firestore methods for a direct getDoc call
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "../lib/firebase";
+
 import { useListenFireStore } from "../contexts/ListenFireStore";
 import writeFireStore from "../hooks/writeFireStore";
 
 export default function Signin() {
-  // State variables
+  // State for email, password, etc.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -32,7 +37,7 @@ export default function Signin() {
 
   /**
    * If user is already signed in and email is verified,
-   * send them straight to "/".
+   * send them straight to "/" for now.
    */
   useEffect(() => {
     if (loading) return;
@@ -48,22 +53,52 @@ export default function Signin() {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
+
     try {
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
+
       if (!user.emailVerified) {
+        // If the user isn't verified, send an email and sign them out.
         await user.sendEmailVerification();
         setMessage("Your email is not verified. A verification email has been sent.");
         setMsgType("error");
         await auth.signOut();
       } else {
+        // Email verified => proceed
         setMessage("Sign in successful!");
         setMsgType("success");
-        setTimeout(() => {
-          router.push("/");
+
+        // After sign in, we do a Firestore read to get isCustomSchedule.
+        setTimeout(async () => {
+          try {
+            const userDocRef = doc(db, "users", user.uid);
+            const docSnap = await getDoc(userDocRef);
+
+            if (docSnap.exists()) {
+              const userData = docSnap.data();
+
+              if (userData.isCustomSchedule) {
+                // Force the user to "/custom"
+                router.push("/custom");
+              } else {
+                // Force the user to "/"
+                router.push("/");
+              }
+            } else {
+              // If no doc found, default to "/"
+              console.warn("No user doc found; defaulting to /");
+              router.push("/");
+            }
+          } catch (error) {
+            console.error("[Signin] Error reading Firestore doc:", error);
+            // If we fail to read Firestore, default to "/"
+            router.push("/");
+          }
         }, 0);
       }
     } catch (error) {
+      console.error("[Signin] Sign in error:", error);
       if (error.code === "auth/user-not-found") {
         setMessage("We couldn’t find an account with that email. Please check and try again.");
       } else if (error.code === "auth/wrong-password") {
@@ -74,17 +109,17 @@ export default function Signin() {
         setMessage("Error signing in: " + error.message);
       }
       setMsgType("error");
-      console.error("[Signin] Sign in error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Sign Up (Email/Password) with default data population
+  // Sign Up (Email/Password) w/ defaults
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
+
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
@@ -113,20 +148,22 @@ export default function Signin() {
           }))
         : null;
 
-      // Firestore initialization for the new user
+      // Initialize Firestore doc
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
         defaultProgress: progressMap,
         customProgress: customProgressMap,
         customSchedule: customScheduleToStore,
+        // Start in default mode
         isCustomSchedule: false
       });
 
-      // Email verification
+      // Send verification email
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
       await auth.signOut();
+
     } catch (error) {
       console.error("[Signin] Sign up error:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -149,19 +186,42 @@ export default function Signin() {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
+
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       const result = await auth.signInWithPopup(provider);
       const user = result.user;
+
       setMessage("Google sign in successful!");
       setMsgType("success");
-      setTimeout(() => {
-        router.push("/");
+
+      setTimeout(async () => {
+        try {
+          // Same approach for Google
+          const userDocRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(userDocRef);
+
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            if (userData.isCustomSchedule) {
+              router.push("/custom");
+            } else {
+              router.push("/");
+            }
+          } else {
+            console.warn("No user doc found; defaulting to /");
+            router.push("/");
+          }
+        } catch (firestoreError) {
+          console.error("[Signin] Error reading Firestore doc:", firestoreError);
+          router.push("/");
+        }
       }, 0);
+
     } catch (error) {
+      console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
       setMsgType("error");
-      console.error("[Signin] Google sign in error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -232,11 +292,21 @@ export default function Signin() {
               <button type="submit" className={styles.signIn} disabled={isLoading}>
                 {isLoading ? "Processing..." : "Sign In"}
               </button>
-              <button type="button" className={styles.signUp} onClick={handleSignUp} disabled={isLoading}>
+              <button
+                type="button"
+                className={styles.signUp}
+                onClick={handleSignUp}
+                disabled={isLoading}
+              >
                 {isLoading ? "Processing..." : "Create Account"}
               </button>
             </div>
-            <button type="button" className={styles.googleSignin} onClick={handleGoogleSignIn} disabled={isLoading}>
+            <button
+              type="button"
+              className={styles.googleSignin}
+              onClick={handleGoogleSignIn}
+              disabled={isLoading}
+            >
               <img
                 src="https://developers.google.com/identity/images/g-logo.png"
                 alt="Google logo"

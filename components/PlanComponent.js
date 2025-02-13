@@ -291,22 +291,6 @@ export default function PlanComponent({ forcedMode }) {
     exportScheduleToExcel(activeSchedule, activeProgressMap);
   };
 
-  // Sign out
-  const signOut = async () => {
-    try {
-      await auth.signOut();
-      clear(); 
-      setItem('otChapters', '2');
-      setItem('ntChapters', '1');
-      setItem('progressMap', {});
-      setItem('customProgressMap', {});
-      removeItem('customSchedule');
-      removeItem('isCustomSchedule');
-      router.push('/');
-    } catch (error) {
-      console.error('[PlanComponent] Sign out error:', error);
-    }
-  };
 
   if (!mounted) return null; // SSR guard
 
@@ -320,7 +304,6 @@ export default function PlanComponent({ forcedMode }) {
       <Header
         currentUser={currentUser}
         syncPending={syncPending}
-        signOut={signOut}
         exportToExcel={handleExportExcel}
       />
       <div className={styles.container} id="main-content">
