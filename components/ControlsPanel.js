@@ -1,5 +1,5 @@
 // components/ControlsPanel.js
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
 import styles from '../styles/Home.module.css';
 import useLocalStorage from '../hooks/useLocalStorage';
 
@@ -16,28 +16,25 @@ const ControlsPanel = ({
   isCustomSchedule,
   setIsCustomSchedule
 }) => {
-  const { getItem, setItem } = useLocalStorage();
+  const { /* getItem, */ setItem } = useLocalStorage();
   // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // On mount, restore the custom text from local storage.
-  useEffect(() => {
-    const storedText = getItem('customPlanText', '');
-    setCustomPlanText(storedText);
-  }, [getItem]);
+  // Removed restoration effect from localStorage.
+  // The textfield value is now transient (only in state).
 
   const handleTextareaInput = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
     const newText = e.target.value;
     setCustomPlanText(newText);
-    setItem('customPlanText', newText);
+    // Do NOT save customPlanText to localStorage.
   };
 
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
-      // Exiting custom mode: regenerate the default schedule from settings.
+      // Exiting custom mode: regenerate default schedule.
       updateSchedule(otChapters, ntChapters, false, true, false);
       setIsCustomSchedule(false);
     } else {
@@ -91,7 +88,6 @@ const ControlsPanel = ({
       });
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
-      // For default mode, regenerate the schedule from the current settings.
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
   };
@@ -109,11 +105,7 @@ const ControlsPanel = ({
       <div className={styles.controls}>
         {/* Planner mode selector */}
         <span>
-          <select
-            className={styles.plannerSelector}
-            onChange={toggleCustomizeMode}
-            value={isCustomSchedule ? 'custom' : 'default'}
-          >
+          <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
             <option value="default">Default Planner</option>
             <option value="custom">Custom Planner</option>
           </select>
