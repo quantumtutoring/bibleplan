@@ -2,7 +2,6 @@
 import React, { useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
-import useLocalStorage from '../hooks/useLocalStorage';
 
 const ControlsPanel = ({
   version,               // The current version in local storage
@@ -18,7 +17,6 @@ const ControlsPanel = ({
   setIsCustomSchedule
 }) => {
   const router = useRouter();
-  const { setItem } = useLocalStorage();
   // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);

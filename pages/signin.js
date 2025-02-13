@@ -1,11 +1,10 @@
-// pages/signin.js
 /**
  * Signin.js - Handles user authentication.
  *
  * After successful sign-in:
  * 1. We do a one-time Firestore read to check the user's `isCustomSchedule` flag.
- * 2. Based on that, we call `router.push("/custom")` or `router.push("/")`.
- *    This simulates the user manually typing the route (no query params).
+ * 2. Based solely on Firestore, we call `router.push("/custom")` or `router.push("/")`.
+ *    This ensures that Firestore is the source of truth.
  */
 
 import { useEffect, useState } from "react";
@@ -15,7 +14,7 @@ import Link from "next/link";
 import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
 
-// 1) Import Firestore methods for a direct getDoc call
+// Import Firestore methods for a direct getDoc call
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
 
@@ -23,7 +22,7 @@ import { useListenFireStore } from "../contexts/ListenFireStore";
 import writeFireStore from "../hooks/writeFireStore";
 
 export default function Signin() {
-  // State for email, password, etc.
+  // State for email, password, messages, etc.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -35,14 +34,34 @@ export default function Signin() {
   const { currentUser, loading } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  /**
-   * If user is already signed in and email is verified,
-   * send them straight to "/" for now.
-   */
+  // If user is already signed in and email is verified, route them based on Firestore.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
-      router.push("/");
+      // Instead of defaulting to "/", fetch Firestore doc to get isCustomSchedule
+      const fetchAndRoute = async () => {
+        try {
+          const userDocRef = doc(db, "users", currentUser.uid);
+          const docSnap = await getDoc(userDocRef);
+          if (docSnap.exists()) {
+            const userData = docSnap.data();
+            if (userData.isCustomSchedule === true) {
+              console.log("Routing to /custom based on Firestore");
+              router.push("/custom");
+            } else {
+              console.log("Routing to / based on Firestore");
+              router.push("/");
+            }
+          } else {
+            console.warn("No user doc found; defaulting to /");
+            router.push("/");
+          }
+        } catch (error) {
+          console.error("Error fetching Firestore doc:", error);
+          router.push("/");
+        }
+      };
+      fetchAndRoute();
     } else {
       setShouldRender(true);
     }
@@ -59,7 +78,7 @@ export default function Signin() {
       const user = userCredential.user;
 
       if (!user.emailVerified) {
-        // If the user isn't verified, send an email and sign them out.
+        // If the user isn't verified, send a verification email and sign them out.
         await user.sendEmailVerification();
         setMessage("Your email is not verified. A verification email has been sent.");
         setMsgType("error");
@@ -69,7 +88,8 @@ export default function Signin() {
         setMessage("Sign in successful!");
         setMsgType("success");
 
-        // After sign in, we do a Firestore read to get isCustomSchedule.
+        // After sign in, explicitly read Firestore for isCustomSchedule
+        // Firestore is the single source of truth.
         setTimeout(async () => {
           try {
             const userDocRef = doc(db, "users", user.uid);
@@ -77,22 +97,18 @@ export default function Signin() {
 
             if (docSnap.exists()) {
               const userData = docSnap.data();
-
-              if (userData.isCustomSchedule) {
-                // Force the user to "/custom"
+              // Route based on the Firestore value:
+              if (userData.isCustomSchedule === true) {
                 router.push("/custom");
               } else {
-                // Force the user to "/"
                 router.push("/");
               }
             } else {
-              // If no doc found, default to "/"
               console.warn("No user doc found; defaulting to /");
               router.push("/");
             }
           } catch (error) {
             console.error("[Signin] Error reading Firestore doc:", error);
-            // If we fail to read Firestore, default to "/"
             router.push("/");
           }
         }, 0);
@@ -148,13 +164,13 @@ export default function Signin() {
           }))
         : null;
 
-      // Initialize Firestore doc
+      // Initialize Firestore doc with default mode (false).
+      // Here, isCustomSchedule is set to false by default.
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
         defaultProgress: progressMap,
         customProgress: customProgressMap,
         customSchedule: customScheduleToStore,
-        // Start in default mode
         isCustomSchedule: false
       });
 
@@ -163,7 +179,6 @@ export default function Signin() {
       setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
       await auth.signOut();
-
     } catch (error) {
       console.error("[Signin] Sign up error:", error);
       if (error.code === "auth/email-already-in-use") {
@@ -197,13 +212,13 @@ export default function Signin() {
 
       setTimeout(async () => {
         try {
-          // Same approach for Google
           const userDocRef = doc(db, "users", user.uid);
           const docSnap = await getDoc(userDocRef);
-
+      
           if (docSnap.exists()) {
             const userData = docSnap.data();
-            if (userData.isCustomSchedule) {
+            // Route based solely on the Firestore value:
+            if (userData.isCustomSchedule === true) {
               router.push("/custom");
             } else {
               router.push("/");
@@ -212,12 +227,12 @@ export default function Signin() {
             console.warn("No user doc found; defaulting to /");
             router.push("/");
           }
-        } catch (firestoreError) {
-          console.error("[Signin] Error reading Firestore doc:", firestoreError);
+        } catch (error) {
+          console.error("[Signin] Error reading Firestore doc:", error);
           router.push("/");
         }
       }, 0);
-
+      
     } catch (error) {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
@@ -289,13 +304,17 @@ export default function Signin() {
           </div>
           <div className={styles.authButtons}>
             <div className={styles.emailAuth}>
-              <button type="submit" className={styles.signIn} disabled={isLoading}>
+              <button 
+                type="submit" 
+                className={styles.signIn} 
+                disabled={isLoading}
+              >
                 {isLoading ? "Processing..." : "Sign In"}
               </button>
-              <button
-                type="button"
-                className={styles.signUp}
-                onClick={handleSignUp}
+              <button 
+                type="button" 
+                className={styles.signUp} 
+                onClick={handleSignUp} 
                 disabled={isLoading}
               >
                 {isLoading ? "Processing..." : "Create Account"}

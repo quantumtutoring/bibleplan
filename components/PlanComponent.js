@@ -1,4 +1,3 @@
-// components/PlanComponent.js
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -43,8 +42,8 @@ export default function PlanComponent({ forcedMode }) {
   const [otChapters, setOtChapters] = useState(() => Number(getItem('otChapters', '2')));
   const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', '1')));
 
-  // isCustomSchedule also from localStorage, but can be overridden by forcedMode
-  const [isCustomSchedule, setIsCustomSchedule] = useState(() => getItem('isCustomSchedule', false));
+  // isCustomSchedule – now sourced only from state (default false) and Firestore
+  const [isCustomSchedule, setIsCustomSchedule] = useState(false);
 
   // Schedules & progress
   const [schedule, setSchedule] = useState([]);
@@ -77,7 +76,6 @@ export default function PlanComponent({ forcedMode }) {
     if (forcedMode === 'default') {
       console.log('[PlanComponent] Forcing Default Mode');
       setIsCustomSchedule(false);
-      setItem('isCustomSchedule', false);
       if (currentUser) {
         updateUserData(currentUser.uid, { isCustomSchedule: false })
           .catch(err => console.error('[PlanComponent] Forced default error:', err));
@@ -85,7 +83,6 @@ export default function PlanComponent({ forcedMode }) {
     } else if (forcedMode === 'custom') {
       console.log('[PlanComponent] Forcing Custom Mode');
       setIsCustomSchedule(true);
-      setItem('isCustomSchedule', true);
       if (currentUser) {
         updateUserData(currentUser.uid, { isCustomSchedule: true })
           .catch(err => console.error('[PlanComponent] Forced custom error:', err));
@@ -108,9 +105,6 @@ export default function PlanComponent({ forcedMode }) {
     }
 
     // 3) Use updateSchedule based on the final mode
-    // If forcedMode is 'custom', definitely call custom.
-    // If forcedMode is 'default', call default schedule.
-    // Otherwise, fallback to whichever isCustomSchedule is in localStorage
     if (forcedMode === 'custom') {
       updateSchedule(storedCustomSchedule || [], undefined, true);
     } else if (forcedMode === 'default') {
@@ -126,8 +120,8 @@ export default function PlanComponent({ forcedMode }) {
   }, []); // single run on mount
 
   /**
-   * Keep track of local changes to version, otChapters, ntChapters, isCustomSchedule
-   * and store them in localStorage (and Firestore if needed).
+   * Keep track of local changes to version, otChapters, ntChapters.
+   * Note: isCustomSchedule is now managed via Firestore only.
    */
   useEffect(() => {
     setItem('version', currentVersion);
@@ -145,14 +139,6 @@ export default function PlanComponent({ forcedMode }) {
   useEffect(() => {
     setItem('ntChapters', String(ntChapters));
   }, [ntChapters, setItem]);
-
-  // If forcedMode changes dynamically after mount, you might want to handle that too.
-  // Omitted here for simplicity.
-
-  // Also keep isCustomSchedule in localStorage
-  useEffect(() => {
-    setItem('isCustomSchedule', isCustomSchedule);
-  }, [isCustomSchedule, setItem]);
 
   // If userData from Firestore changes, possibly merge it in
   useEffect(() => {
@@ -290,7 +276,6 @@ export default function PlanComponent({ forcedMode }) {
   const handleExportExcel = () => {
     exportScheduleToExcel(activeSchedule, activeProgressMap);
   };
-
 
   if (!mounted) return null; // SSR guard
 

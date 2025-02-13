@@ -17,7 +17,6 @@ export default function Header({ currentUser, syncPending, exportToExcel }) {
       localStorage.removeItem("customSchedule");
       localStorage.removeItem("progressMap");
       localStorage.removeItem("customProgressMap");
-      localStorage.removeItem("isCustomSchedule");
       localStorage.removeItem("customPlanText");
 
       // 3) Navigate to the home page
