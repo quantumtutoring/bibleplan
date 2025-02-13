@@ -7,9 +7,10 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 - **Bible Version Selection:** Choose from NASB, LSB, or ESV.
 - **Schedule Generation:** Create a reading schedule based on the number of chapters per day.
 - **User Authentication:** Sign in using email/password or Google authentication.
-- **Firestore Integration:** Store and retrieve user settings and reading progress in real time.
+- **Firestore Integration:** Store and retrieve user settings and reading progress in real time. (Firestore is treated as the source of truth.)
 - **Excel Export:** Export your reading schedule and progress to an Excel file.
 - **Responsive Design:** Built with Next.js and React for a modern, responsive interface.
+- **Custom Planner Mode:** In addition to the default schedule generated from your OT/NT chapter settings, you can switch to Custom Planner mode. In this mode, you can enter your own daily reading passages via a text field (one day per line).
 
 ## Technologies Used
 
@@ -24,7 +25,7 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 / (project root)
 ├── components/             
 │   ├── Header.js              // Displays user info (e.g., email, sign‑in/sign‑out controls)
-│   ├── ControlsPanel.js       // Contains Bible version selector, chapter input controls, and buttons (generate schedule, export Excel)
+│   ├── ControlsPanel.js       // Contains Bible version selector, chapter input controls, custom plan text field (for custom mode), and buttons (generate schedule, export Excel)
 │   ├── ScheduleTable.js       // Renders the generated reading schedule in a table with checkboxes for tracking progress
 │   └── PlanComponent.js       // Main planner component that orchestrates UI, schedule generation, and Excel export
 │
@@ -59,34 +60,6 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
     ├── exportExcel.js         // Helper module to export the generated schedule into an Excel file
     └── generateSchedule.js    // Function to generate a Bible reading schedule based on books, chapters per day, etc.
 ```
-
-
-## Usage
-
-1. **Set Chapters Per Day:**  
-   Adjust the input fields on the main planner page to specify the desired number of chapters for the Old Testament (OT) and New Testament (NT) per day.
-
-2. **Generate Schedule:**  
-   Click the "Update Schedule" button to create a new Bible reading plan. Changing the settings will automatically clear any previously stored progress.
-
-3. **Track Your Progress:**  
-   As you complete your daily readings, mark the corresponding checkboxes. You can use shift‑click to quickly mark multiple consecutive days as complete.
-
-4. **Export Schedule:**  
-   Click the "Export to Excel" button to download your current reading schedule and progress as an Excel file for offline reference or sharing.
-
-5. **User Authentication:**  
-   Sign in via the dedicated sign‑in page to save your progress in Firestore. If you are not signed in, your progress will be stored locally.
-
-6. **Switch Bible Versions:**  
-   Navigate to the following routes to switch between Bible translations:  
-   - `/nasb` for the NASB version (default)  
-   - `/esv` for the ESV version  
-   - `/lsb` for the LSB version
-
-## Deployment
-
-You can deploy the Next.js app on popular platforms such as [Vercel](https://vercel.com/), [Netlify](https://www.netlify.com/), or any Node.js hosting provider.
 
 ## License
 
