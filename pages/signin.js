@@ -17,7 +17,7 @@ import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
 import { useListenFireStore } from "../contexts/ListenFireStore";
 // Import the unified Firestore write hook.
-import useUserDataSync from "../hooks/useUserDataSync";
+import writeFireStore from "../hooks/writeFireStore";
 
 export default function Signin() {
   // State variables for email, password, user feedback, and loading.
@@ -32,7 +32,7 @@ export default function Signin() {
   // Consume the centralized user data.
   const { currentUser, loading } = useListenFireStore();
   // Get the unified update function from our hook.
-  const { updateUserData } = useUserDataSync();
+  const { updateUserData } = writeFireStore();
 
   /**
    * routeToVersion

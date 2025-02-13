@@ -10,7 +10,7 @@ import Header from './Header';
 import ControlsPanel from './ControlsPanel';
 import ScheduleTable from './ScheduleTable';
 import { exportScheduleToExcel } from '../utils/exportExcel';
-import useUserDataSync from '../hooks/useUserDataSync';
+import writeFireStore from '../hooks/writeFireStore';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useUpdateSchedule from '../hooks/useUpdateSchedule';
 
@@ -67,7 +67,7 @@ export default function PlanComponent() {
   const lastCheckedRef = useRef(null);
 
   const { currentUser, userData } = useListenFireStore();
-  const { updateUserData } = useUserDataSync();
+  const { updateUserData } = writeFireStore();
 
   // Extract the updateSchedule function from the custom hook.
   const updateSchedule = useUpdateSchedule({
