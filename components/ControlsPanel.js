@@ -1,10 +1,10 @@
 // components/ControlsPanel.js
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const ControlsPanel = ({
-  version,               // The current version in local storage
+  version,               // The current version from parent state
   setCurrentVersion,     // A setter for updating the version
   otChapters,
   setOtChapters,
@@ -17,26 +17,24 @@ const ControlsPanel = ({
   setIsCustomSchedule
 }) => {
   const router = useRouter();
-  // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
   // Adjust the textarea height based on content.
-  const handleTextareaInput = (e) => {
+  const handleTextareaInput = useCallback((e) => {
     e.target.style.height = 'auto';
-    e.target.style.height = e.target.scrollHeight + 'px';
+    e.target.style.height = `${e.target.scrollHeight}px`;
     setCustomPlanText(e.target.value);
-  };
+  }, []);
 
-  const toggleCustomizeMode = () => {
+  const toggleCustomizeMode = useCallback(() => {
     console.log('Current isCustomSchedule:', isCustomSchedule);
-  
+
     if (isCustomSchedule) {
       console.log('Switching from CUSTOM -> DEFAULT');
       // Exiting custom mode: regenerate default schedule
       updateSchedule(otChapters, ntChapters, false, true, false);
       setIsCustomSchedule(false);
-  
       if (router.pathname !== '/') {
         console.log('Routing to /');
         router.push('/');
@@ -50,16 +48,17 @@ const ControlsPanel = ({
         updateSchedule([], undefined, false, false, false);
       }
       setIsCustomSchedule(true);
-  
-      // Make sure we actually route to /custom
       if (router.pathname !== '/custom') {
         console.log('Routing to /custom');
         router.push('/custom');
       }
     }
-  };
-  
-  
+  }, [isCustomSchedule, otChapters, ntChapters, customSchedule, router, updateSchedule, setIsCustomSchedule]);
+
+  const handleVersionChange = useCallback((e) => {
+    setCurrentVersion(e.target.value);
+  }, [setCurrentVersion]);
+
   // Helper function to format a Bible reference string.
   const formatBibleReference = (str) => {
     if (!str) return "";
@@ -74,7 +73,7 @@ const ControlsPanel = ({
     return formatted;
   };
 
-  const handleCreateSchedule = () => {
+  const handleCreateSchedule = useCallback(() => {
     if (isCustomSchedule) {
       const lines = customPlanText
         .split('\n')
@@ -100,21 +99,15 @@ const ControlsPanel = ({
       });
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
-      // The updateSchedule function will validate the OT/NT numbers.
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
-  };
+  }, [isCustomSchedule, customPlanText, version, otChapters, ntChapters, updateSchedule]);
 
   return (
     <div>
-      {/* A dropdown for selecting the version, no routing needed here. */}
+      {/* Version dropdown */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <select
-          value={version}
-          onChange={(e) => {
-            setCurrentVersion(e.target.value);
-          }}
-        >
+        <select value={version} onChange={handleVersionChange}>
           <option value="nasb">NASB</option>
           <option value="lsb">LSB</option>
           <option value="esv">ESV</option>

@@ -2,9 +2,11 @@
  * Signin.js - Handles user authentication.
  *
  * After successful sign-in:
- * 1. We do a one-time Firestore read to check the user's `isCustomSchedule` flag.
- * 2. Based solely on Firestore, we call `router.push("/custom")` or `router.push("/")`.
- *    This ensures that Firestore is the source of truth.
+ * 1. The useEffect below detects that a signed-in, verified user exists.
+ * 2. It fetches the user's Firestore document and routes based solely on the
+ *    `isCustomSchedule` flag from Firestore.
+ *    - If true, the user is routed to "/custom".
+ *    - Otherwise, the user is routed to "/".
  */
 
 import { useEffect, useState } from "react";
@@ -34,11 +36,11 @@ export default function Signin() {
   const { currentUser, loading } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // If user is already signed in and email is verified, route them based on Firestore.
+  // Centralized routing logic: once a verified user is detected,
+  // fetch Firestore and route based on isCustomSchedule.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
-      // Instead of defaulting to "/", fetch Firestore doc to get isCustomSchedule
       const fetchAndRoute = async () => {
         try {
           const userDocRef = doc(db, "users", currentUser.uid);
@@ -84,34 +86,10 @@ export default function Signin() {
         setMsgType("error");
         await auth.signOut();
       } else {
-        // Email verified => proceed
+        // Email verified => sign in successful.
         setMessage("Sign in successful!");
         setMsgType("success");
-
-        // After sign in, explicitly read Firestore for isCustomSchedule
-        // Firestore is the single source of truth.
-        setTimeout(async () => {
-          try {
-            const userDocRef = doc(db, "users", user.uid);
-            const docSnap = await getDoc(userDocRef);
-
-            if (docSnap.exists()) {
-              const userData = docSnap.data();
-              // Route based on the Firestore value:
-              if (userData.isCustomSchedule === true) {
-                router.push("/custom");
-              } else {
-                router.push("/");
-              }
-            } else {
-              console.warn("No user doc found; defaulting to /");
-              router.push("/");
-            }
-          } catch (error) {
-            console.error("[Signin] Error reading Firestore doc:", error);
-            router.push("/");
-          }
-        }, 0);
+        // No explicit routing here—the useEffect will handle routing once currentUser updates.
       }
     } catch (error) {
       console.error("[Signin] Sign in error:", error);
@@ -204,35 +182,10 @@ export default function Signin() {
 
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
-      const result = await auth.signInWithPopup(provider);
-      const user = result.user;
-
+      await auth.signInWithPopup(provider);
       setMessage("Google sign in successful!");
       setMsgType("success");
-
-      setTimeout(async () => {
-        try {
-          const userDocRef = doc(db, "users", user.uid);
-          const docSnap = await getDoc(userDocRef);
-      
-          if (docSnap.exists()) {
-            const userData = docSnap.data();
-            // Route based solely on the Firestore value:
-            if (userData.isCustomSchedule === true) {
-              router.push("/custom");
-            } else {
-              router.push("/");
-            }
-          } else {
-            console.warn("No user doc found; defaulting to /");
-            router.push("/");
-          }
-        } catch (error) {
-          console.error("[Signin] Error reading Firestore doc:", error);
-          router.push("/");
-        }
-      }, 0);
-      
+      // No explicit routing here—the useEffect will handle it once currentUser updates.
     } catch (error) {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);

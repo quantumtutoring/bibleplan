@@ -120,17 +120,17 @@ export default function PlanComponent({ forcedMode }) {
   }, []); // single run on mount
 
   /**
-   * Keep track of local changes to version, otChapters, ntChapters.
-   * Note: isCustomSchedule is now managed via Firestore only.
+   * Write local changes for version/OT/NT to localStorage and Firestore.
+   * Note: isCustomSchedule is managed via Firestore.
    */
   useEffect(() => {
     setItem('version', currentVersion);
-    if (currentUser) {
+    if (currentUser && userData?.settings?.version !== currentVersion) {
       updateUserData(currentUser.uid, {
         settings: { version: currentVersion },
       }).catch(error => console.error('[PlanComponent] Error updating version in Firestore:', error));
     }
-  }, [currentVersion, currentUser, setItem, updateUserData]);
+  }, [currentVersion, currentUser]);
 
   useEffect(() => {
     setItem('otChapters', String(otChapters));
@@ -140,23 +140,23 @@ export default function PlanComponent({ forcedMode }) {
     setItem('ntChapters', String(ntChapters));
   }, [ntChapters, setItem]);
 
-  // If userData from Firestore changes, possibly merge it in
+  // Merge Firestore userData into state—narrowing dependencies to avoid extra updates.
   useEffect(() => {
-    if (!userData) return;
-    if (userData.settings) {
-      if (userData.settings.version && userData.settings.version !== currentVersion) {
-        setCurrentVersion(userData.settings.version);
-      }
-      if (userData.settings.otChapters) {
-        const newOT = Number(userData.settings.otChapters);
-        setOtChapters(newOT);
-        setItem('otChapters', String(newOT));
-      }
-      if (userData.settings.ntChapters) {
-        const newNT = Number(userData.settings.ntChapters);
-        setNtChapters(newNT);
-        setItem('ntChapters', String(newNT));
-      }
+    if (!userData || !userData.settings) return;
+    const { version: fsVersion, otChapters: fsOT, ntChapters: fsNT } = userData.settings;
+    if (fsVersion && fsVersion !== currentVersion) {
+      console.log('[PlanComponent] Updating version from Firestore:', fsVersion);
+      setCurrentVersion(fsVersion);
+    }
+    if (fsOT && Number(fsOT) !== otChapters) {
+      const newOT = Number(fsOT);
+      setOtChapters(newOT);
+      setItem('otChapters', String(newOT));
+    }
+    if (fsNT && Number(fsNT) !== ntChapters) {
+      const newNT = Number(fsNT);
+      setNtChapters(newNT);
+      setItem('ntChapters', String(newNT));
     }
     if (userData.defaultProgress) {
       setDefaultProgressMap(userData.defaultProgress);
@@ -173,7 +173,7 @@ export default function PlanComponent({ forcedMode }) {
     if (typeof userData.isCustomSchedule === 'boolean') {
       setIsCustomSchedule(userData.isCustomSchedule);
     }
-  }, [userData, currentVersion, setItem]);
+  }, [userData?.settings?.version, userData?.settings?.otChapters, userData?.settings?.ntChapters, userData]);
 
   // Identify which schedule & progress to show
   const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
