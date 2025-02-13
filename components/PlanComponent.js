@@ -90,19 +90,27 @@ export default function PlanComponent() {
     if (storedCustomProgress) {
       setCustomProgressMap(storedCustomProgress);
     }
-    
-    // If not signed in to Firestore, update the schedule based on the persisted mode.
-    if (!userData) {
-      if (isCustomSchedule) {
-        // If custom mode is enabled, update using the custom schedule (or an empty array if none exists).
-        updateSchedule(storedCustomSchedule || [], undefined, true);
-      } else {
-        // Otherwise update the default schedule.
-        updateSchedule(otChapters, ntChapters, true);
-      }
+    // Always update the schedule based on the current mode,
+    // regardless of whether userData exists.
+    if (isCustomSchedule) {
+      updateSchedule(storedCustomSchedule || [], undefined, true);
+    } else {
+      updateSchedule(otChapters, ntChapters, true);
     }
     initialScheduleLoaded.current = true;
   }, []); // Run once on mount
+
+  // --- (Optional) Update schedule when OT/NT settings or mode change ---
+  useEffect(() => {
+    if (initialScheduleLoaded.current) {
+      if (isCustomSchedule) {
+        const storedCustomSchedule = getItem('customSchedule', null);
+        updateSchedule(storedCustomSchedule || [], undefined, true);
+      } else {
+        updateSchedule(otChapters, ntChapters, true);
+      }
+    }
+  }, [otChapters, ntChapters, isCustomSchedule]);
 
   // --- Update state from Firestore whenever userData changes ---
   useEffect(() => {
