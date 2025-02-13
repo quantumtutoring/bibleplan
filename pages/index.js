@@ -1,4 +1,3 @@
-// pages/index.js
 /**
  * Index.js - Main Landing/Routing Page
  *
@@ -29,8 +28,8 @@ export default function Home() {
 
     if (currentUser) {
       // --- Case 1: User is signed in ---
-      // Check the Firestore document for the saved Bible version.
-      const storedVersion = userData?.settings?.version;
+      // Try to get the version from Firestore; if not present, fall back to localStorage.
+      const storedVersion = userData?.settings?.version || getItem("version");
       if (
         storedVersion === "nasb" ||
         storedVersion === "lsb" ||
@@ -38,12 +37,12 @@ export default function Home() {
       ) {
         router.push(`/${storedVersion}`);
       } else {
-        // No valid version found in Firestore; render the default planner.
+        // No valid version found; render the default planner.
         setShouldRender(true);
       }
     } else {
       // --- Case 2: User is not signed in ---
-      // For guest users, check localStorage (via our hook) for a stored version.
+      // For guest users, check localStorage for a stored version.
       const localVersion = getItem("version");
       if (
         localVersion === "nasb" ||
