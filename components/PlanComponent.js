@@ -37,7 +37,7 @@ export default function PlanComponent() {
     setCurrentVersion(version);
   }, [version]);
 
-  // Save the current version to localStorage so that index.js can read it.
+  // Save the current version to localStorage.
   useEffect(() => {
     setItem("version", currentVersion);
   }, [currentVersion, setItem]);
@@ -45,7 +45,7 @@ export default function PlanComponent() {
   // --- Lazy Initialization of OT/NT settings and custom schedule mode ---
   const [otChapters, setOtChapters] = useState(() => Number(getItem('otChapters', "2")));
   const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', "1")));
-  const [isCustomSchedule, setIsCustomSchedule] = useState(() => getItem('isCustomSchedule', "false") === "true");
+  const [isCustomSchedule, setIsCustomSchedule] = useState(() => getItem('isCustomSchedule', false));
 
   // Save settings whenever they change.
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function PlanComponent() {
   }, [ntChapters, setItem]);
 
   useEffect(() => {
-    setItem("isCustomSchedule", isCustomSchedule ? "true" : "false");
+    setItem("isCustomSchedule", isCustomSchedule);
   }, [isCustomSchedule, setItem]);
 
   // --- Other state variables ---
@@ -71,9 +71,9 @@ export default function PlanComponent() {
 
   const { currentUser, userData, loading } = useUserDataContext();
 
-  // Restore stored values from localStorage on mount.
+  // --- Restore stored values from localStorage on mount ---
   useEffect(() => {
-    // Note: OT, NT, and isCustomSchedule are already lazily initialized.
+    // OT, NT, and isCustomSchedule are already lazily initialized.
     console.log("Restored OT:", otChapters, "NT:", ntChapters, "isCustomSchedule:", isCustomSchedule);
 
     // Restore custom schedule and progress maps (if any).
@@ -91,14 +91,20 @@ export default function PlanComponent() {
       setCustomProgressMap(storedCustomProgress);
     }
     
-    // Always reconstruct the default schedule from settings if no Firestore data.
+    // If not signed in to Firestore, update the schedule based on the persisted mode.
     if (!userData) {
-      updateSchedule(otChapters, ntChapters, true);
+      if (isCustomSchedule) {
+        // If custom mode is enabled, update using the custom schedule (or an empty array if none exists).
+        updateSchedule(storedCustomSchedule || [], undefined, true);
+      } else {
+        // Otherwise update the default schedule.
+        updateSchedule(otChapters, ntChapters, true);
+      }
     }
     initialScheduleLoaded.current = true;
-  }, []); // Run only once on mount
+  }, []); // Run once on mount
 
-  // Update state from Firestore whenever userData changes.
+  // --- Update state from Firestore whenever userData changes ---
   useEffect(() => {
     if (userData) {
       if (userData.settings) {
@@ -142,7 +148,7 @@ export default function PlanComponent() {
    * - A full custom schedule with URLs for local use.
    * - A stripped custom schedule (without URL fields) for Firestore.
    *
-   * For default schedules, we reconstruct the schedule from settings and do not store it locally.
+   * For default schedules, we reconstruct the schedule from settings.
    */
   const updateSchedule = (
     scheduleOrOt,
@@ -171,7 +177,7 @@ export default function PlanComponent() {
       }));
       setCustomSchedule(fullCustomSchedule);
       setIsCustomSchedule(true);
-      setItem('isCustomSchedule', "true");
+      setItem('isCustomSchedule', true);
       if (clearProgress) {
         setCustomProgressMap({});
         setItem('customProgressMap', {});
@@ -252,7 +258,7 @@ export default function PlanComponent() {
       newSchedule.push({ day, passages: linkText, url });
     }
     setIsCustomSchedule(false);
-    setItem('isCustomSchedule', "false");
+    setItem('isCustomSchedule', false);
     if (clearProgress) {
       setDefaultProgressMap({});
       setItem('progressMap', {});
@@ -386,8 +392,8 @@ export default function PlanComponent() {
     }
   };
 
-  // ---- Render the component ----
-  if (!mounted) return null; // Now placed here so that all hooks are always called
+  // Render only after mounted.
+  if (!mounted) return null;
 
   return (
     <div className={styles.pageBackground}>
