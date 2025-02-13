@@ -36,6 +36,9 @@ export default function Header({ currentUser, version, isCustomSchedule, syncPen
     }
   };
 
+  // Build query parameters for the sign in link.
+  const signinHref = `/signin?version=${encodeURIComponent(version)}&mode=${isCustomSchedule ? 'custom' : 'default'}`;
+
   return (
     <div className={styles.header} id="auth-header">
       {currentUser ? (
@@ -51,7 +54,7 @@ export default function Header({ currentUser, version, isCustomSchedule, syncPen
           </button>
         </div>
       ) : (
-        <Link href="/signin">Sign in</Link>
+        <Link href={signinHref}>Sign in</Link>
       )}
     </div>
   );

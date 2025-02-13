@@ -1,12 +1,11 @@
 /**
  * Signin.js - Handles user authentication.
  *
- * After successful sign-in:
- * 1. The useEffect below detects that a signed-in, verified user exists.
- * 2. It fetches the user's Firestore document and routes based solely on the
- *    `isCustomSchedule` flag from Firestore.
- *    - If true, the user is routed to "/custom".
- *    - Otherwise, the user is routed to "/".
+ * This file uses React state (with defaults) to track version and mode.
+ * If query parameters are provided (e.g. ?version=esv&mode=custom), they override the defaults.
+ *
+ * After a successful sign-up, the Firestore user document is initialized with these state values.
+ * Then, after sign-in, a useEffect fetches the user document and routes based on isCustomSchedule.
  */
 
 import { useEffect, useState } from "react";
@@ -24,7 +23,12 @@ import { useListenFireStore } from "../contexts/ListenFireStore";
 import writeFireStore from "../hooks/writeFireStore";
 
 export default function Signin() {
-  // State for email, password, messages, etc.
+  const router = useRouter();
+  const { query } = router;
+  const { currentUser, loading } = useListenFireStore();
+  const { updateUserData } = writeFireStore();
+
+  // Local states for auth form.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -32,12 +36,23 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  const router = useRouter();
-  const { currentUser, loading } = useListenFireStore();
-  const { updateUserData } = writeFireStore();
+  // Track version and mode entirely in state.
+  // Defaults: version "nasb" and default mode (isCustomSchedule false).
+  const [version, setVersion] = useState("nasb");
+  const [isCustomSchedule, setIsCustomSchedule] = useState(false);
 
-  // Centralized routing logic: once a verified user is detected,
-  // fetch Firestore and route based on isCustomSchedule.
+  // Optional: override defaults from URL query parameters.
+  useEffect(() => {
+    if (query.version) {
+      setVersion(query.version);
+    }
+    if (query.mode) {
+      // Expecting mode to be "custom" or "default"
+      setIsCustomSchedule(query.mode === "custom");
+    }
+  }, [query]);
+
+  // Once the user is signed in and verified, fetch their Firestore doc and route accordingly.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
@@ -69,27 +84,23 @@ export default function Signin() {
     }
   }, [loading, currentUser, router]);
 
-  // Sign In with Email/Password
+  // Sign In handler remains unchanged.
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
-
     try {
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
-
       if (!user.emailVerified) {
-        // If the user isn't verified, send a verification email and sign them out.
         await user.sendEmailVerification();
         setMessage("Your email is not verified. A verification email has been sent.");
         setMsgType("error");
         await auth.signOut();
       } else {
-        // Email verified => sign in successful.
         setMessage("Sign in successful!");
         setMsgType("success");
-        // No explicit routing here—the useEffect will handle routing once currentUser updates.
+        // Routing is handled by the effect above.
       }
     } catch (error) {
       console.error("[Signin] Sign in error:", error);
@@ -108,51 +119,32 @@ export default function Signin() {
     }
   };
 
-  // Sign Up (Email/Password) w/ defaults
+  // Sign Up handler: uses state for version and mode.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
-
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
+      // For a new user, we use our state values.
+      // Here we assume OT and NT defaults remain as defined.
+      const otChaptersDefault = 2;
+      const ntChaptersDefault = 1;
+      const progressMap = {};
+      const customProgressMap = {};
+      const customScheduleToStore = null;
 
-      // Optionally read localStorage for default values
-      const otChapters = localStorage.getItem("otChapters")
-        ? Number(JSON.parse(localStorage.getItem("otChapters")))
-        : 2;
-      const ntChapters = localStorage.getItem("ntChapters")
-        ? Number(JSON.parse(localStorage.getItem("ntChapters")))
-        : 1;
-      const version = localStorage.getItem("version") || "nasb";
-      const progressMap = localStorage.getItem("progressMap")
-        ? JSON.parse(localStorage.getItem("progressMap"))
-        : {};
-      const customProgressMap = localStorage.getItem("customProgressMap")
-        ? JSON.parse(localStorage.getItem("customProgressMap"))
-        : {};
-      const storedCustomSchedule = localStorage.getItem("customSchedule")
-        ? JSON.parse(localStorage.getItem("customSchedule"))
-        : null;
-      const customScheduleToStore = storedCustomSchedule
-        ? storedCustomSchedule.map(item => ({
-            day: item.day,
-            passages: item.passages,
-          }))
-        : null;
-
-      // Initialize Firestore doc with default mode (false).
-      // Here, isCustomSchedule is set to false by default.
+      // Initialize Firestore doc with the state values.
       await updateUserData(user.uid, {
-        settings: { otChapters, ntChapters, version },
+        settings: { otChapters: otChaptersDefault, ntChapters: ntChaptersDefault, version },
         defaultProgress: progressMap,
         customProgress: customProgressMap,
         customSchedule: customScheduleToStore,
-        isCustomSchedule: false
+        isCustomSchedule
       });
 
-      // Send verification email
+      // Send verification email.
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
@@ -174,18 +166,17 @@ export default function Signin() {
     }
   };
 
-  // Google Sign In
+  // Google Sign In handler.
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
-
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       await auth.signInWithPopup(provider);
       setMessage("Google sign in successful!");
       setMsgType("success");
-      // No explicit routing here—the useEffect will handle it once currentUser updates.
+      // Routing will be handled by the effect above.
     } catch (error) {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
@@ -195,7 +186,7 @@ export default function Signin() {
     }
   };
 
-  // Password Reset
+  // Password Reset handler.
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setMessage("");
