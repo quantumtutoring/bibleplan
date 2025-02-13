@@ -140,13 +140,13 @@ export default function Signin() {
 
       console.log("[Signin] Populating Firestore with all local data for new user.");
 
-      // Update Firestore with settings, default progress, custom progress, and custom schedule.
-      // The default schedule is not stored and will be generated locally.
+      // Update Firestore with settings, default progress, custom progress, custom schedule, and planner mode.
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
         progress: progressMap,
         customProgress: customProgressMap,
         customSchedule: customScheduleToStore,
+        isCustomSchedule: false // <-- default planner mode
       });
 
       // Send an email verification.

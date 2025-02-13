@@ -202,9 +202,9 @@ export default function PlanComponent() {
       }
       // Store the full custom schedule locally.
       setItem('customSchedule', fullCustomSchedule);
-      // Combine custom schedule update and clearing progress (if needed) into one write.
+      // Update Firestore without URLs and include mode.
       if (currentUser) {
-        const updateData = { customSchedule: strippedCustomSchedule };
+        const updateData = { customSchedule: strippedCustomSchedule, isCustomSchedule: true };
         if (clearProgress) {
           updateData.customProgress = {};
         }
@@ -280,6 +280,8 @@ export default function PlanComponent() {
       const linkText = `${otText}, ${ntText}`;
       newSchedule.push({ day, passages: linkText, url });
     }
+    // Create a stripped version (without URLs) for Firestore.
+    const strippedSchedule = newSchedule.map(({ day, passages }) => ({ day, passages }));
     setIsCustomSchedule(false);
     setItem('isCustomSchedule', false);
     if (clearProgress) {
@@ -289,11 +291,12 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
     setItem('defaultSchedule', newSchedule);
 
-    // Combine the settings and schedule updates into a single Firestore write.
+    // Update Firestore with settings, stripped schedule, and mode.
     if (currentUser) {
       const updateData = {
         settings: { otChapters: otNum, ntChapters: ntNum },
-        schedule: newSchedule,
+        schedule: strippedSchedule,
+        isCustomSchedule: false
       };
       if (clearProgress) {
         updateData.defaultProgress = {};
@@ -408,6 +411,7 @@ export default function PlanComponent() {
       setItem('customProgressMap', {});
       removeItem('defaultSchedule');
       removeItem('customSchedule');
+      removeItem('isCustomSchedule');
       router.push('/');
     } catch (error) {
       console.error('[PlanComponent] Sign out error:', error);

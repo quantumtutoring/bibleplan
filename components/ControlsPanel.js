@@ -38,7 +38,7 @@ const ControlsPanel = ({
   const toggleCustomizeMode = () => {
     if (isCustomSchedule) {
       // Exiting custom mode: regenerate default schedule.
-      updateSchedule(otChapters, ntChapters, false, true, false, true);
+      updateSchedule(otChapters, ntChapters, false, true, false);
       setIsCustomSchedule(false);
     } else {
       // Entering custom mode: restore custom schedule if available.
@@ -51,11 +51,7 @@ const ControlsPanel = ({
     }
   };
 
-  // Helper function to format a Bible reference:
-  // - Inserts space after commas/semicolons if missing.
-  // - Inserts space between letters and digits.
-  // - Inserts space between a book name and the chapter.
-  // - Converts each word to title case.
+  // Helper function to format a Bible reference.
   const formatBibleReference = (str) => {
     if (!str) return "";
     let formatted = str.trim();
@@ -108,16 +104,15 @@ const ControlsPanel = ({
           <option value="esv">ESV</option>
         </select>
       </div>
-      {/* Conditionally update the heading */}
-      <h1>{isCustomSchedule ? 'Bible Reading Planner' : 'Bible Reading Planner'}</h1>
+      <h1>Bible Reading Planner</h1>
       <div className={styles.controls}>
-                  {/* Desired dropdown near the bottom */}
-                  <span>
-            <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
-              <option value="default">Default Planner</option>
-              <option value="custom">Custom Planner</option>
-            </select>
-          </span>
+        {/* Planner mode selector */}
+        <span>
+          <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
+            <option value="default">Default Planner</option>
+            <option value="custom">Custom Planner</option>
+          </select>
+        </span>
         {isCustomSchedule ? (
           <div>
             <textarea
@@ -157,10 +152,8 @@ const ControlsPanel = ({
           </button>
 
           <button onClick={exportToExcel}>
-              Export to Excel
+            Export to Excel
           </button>
-
-
         </div>
       </div>
     </div>

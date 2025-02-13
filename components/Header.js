@@ -23,7 +23,7 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
     try {
       // First sign out from Firebase.
       await signOut();
-      // Then reset localStorage values using JSON.stringify to ensure valid JSON.
+      // Then reset localStorage values.
       window.localStorage.setItem("version", JSON.stringify("nasb"));
       window.localStorage.setItem("otChapters", JSON.stringify(2));
       window.localStorage.setItem("ntChapters", JSON.stringify(1));
@@ -31,6 +31,7 @@ const Header = ({ currentUser, syncPending, signOut, exportToExcel }) => {
       window.localStorage.setItem("customProgressMap", JSON.stringify({}));
       window.localStorage.removeItem("defaultSchedule");
       window.localStorage.removeItem("customSchedule");
+      window.localStorage.removeItem("isCustomSchedule");
       // Finally, navigate to the home page.
       router.push('/');
     } catch (error) {
