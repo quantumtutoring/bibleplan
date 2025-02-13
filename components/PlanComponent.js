@@ -73,6 +73,18 @@ export default function PlanComponent({ forcedMode }) {
     currentUser,
   });
 
+  // Define a function to reset state to defaults.
+const resetState = () => {
+  setCurrentVersion("nasb");
+  setOtChapters(2);
+  setNtChapters(1);
+  setIsCustomSchedule(false);
+  setSchedule([]);
+  setDefaultProgressMap({});
+  setCustomProgressMap({});
+  setCustomSchedule(null);
+};
+
   // On mount: apply forced mode and restore localStorage data (for signed-out users).
   useEffect(() => {
     if (forcedMode === 'default') {
@@ -284,6 +296,7 @@ export default function PlanComponent({ forcedMode }) {
         exportToExcel={handleExportExcel}
         version={currentVersion}
         isCustomSchedule={isCustomSchedule}
+        resetState={resetState}
       />
       <div className={styles.container} id="main-content">
         <ControlsPanel
