@@ -108,11 +108,11 @@ const ControlsPanel = ({
           <option value="esv">ESV</option>
         </select>
       </div>
-      <h1>Bible Reading Planner</h1>
+      {/* Conditionally update the heading */}
+      <h1>{isCustomSchedule ? 'Custom Reading Planner' : 'Bible Reading Planner'}</h1>
       <div className={styles.controls}>
         {isCustomSchedule ? (
           <div>
-            
             <textarea
               ref={textareaRef}
               value={customPlanText}
@@ -151,12 +151,15 @@ const ControlsPanel = ({
 
           <button onClick={exportToExcel}>
               Export to Excel
-            </button>
-
-          <button onClick={toggleCustomizeMode}>
-            {isCustomSchedule ? 'Default Planner' : 'Custom Planner'}
           </button>
 
+          {/* Desired dropdown near the bottom */}
+          <span>
+            <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
+              <option value="default">Default Planner</option>
+              <option value="custom">Custom Planner</option>
+            </select>
+          </span>
         </div>
       </div>
     </div>
