@@ -3,14 +3,14 @@
  *
  * This page checks the authentication state and the saved Bible version
  * (from Firestore for signed‑in users or from localStorage for guests) via our centralized
- * UserDataContext. If a valid version is found, the user is redirected.
+ * ListenFireStore. If a valid version is found, the user is redirected.
  * Otherwise, the default PlanComponent is rendered.
  */
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import PlanComponent from "../components/PlanComponent"; // Main planner component
-import { useUserDataContext } from "../contexts/UserDataContext";
+import { useListenFireStore } from "../contexts/ListenFireStore";
 import useLocalStorage from "../hooks/useLocalStorage";
 
 export default function Home() {
@@ -18,7 +18,7 @@ export default function Home() {
   const [shouldRender, setShouldRender] = useState(false);
   
   // Get authentication and Firestore data from the centralized context.
-  const { currentUser, userData, loading } = useUserDataContext();
+  const { currentUser, userData, loading } = useListenFireStore();
   // Use our localStorage hook to abstract local storage operations.
   const { getItem } = useLocalStorage();
 

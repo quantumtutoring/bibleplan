@@ -1,10 +1,10 @@
-// contexts/UserDataContext.js
+// contexts/ListenFireStore.js
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
 
-const UserDataContext = createContext({
+const ListenFireStore = createContext({
   currentUser: null,
   userData: null,
   loading: true,
@@ -31,7 +31,7 @@ export function UserDataProvider({ children }) {
             setLoading(false);
           },
           (error) => {
-            console.error("[UserDataContext] Error listening to user document:", error);
+            console.error("[ListenFireStore] Error listening to user document:", error);
             setLoading(false);
           }
         );
@@ -56,12 +56,12 @@ export function UserDataProvider({ children }) {
   );
 
   return (
-    <UserDataContext.Provider value={contextValue}>
+    <ListenFireStore.Provider value={contextValue}>
       {children}
-    </UserDataContext.Provider>
+    </ListenFireStore.Provider>
   );
 }
 
-export function useUserDataContext() {
-  return useContext(UserDataContext);
+export function useListenFireStore() {
+  return useContext(ListenFireStore);
 }

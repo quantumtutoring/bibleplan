@@ -2,7 +2,7 @@
 /**
  * Signin.js - Main Landing/Routing Page
  *
- * This page handles user authentication. It uses the centralized UserDataContext to check
+ * This page handles user authentication. It uses the centralized ListenFireStore to check
  * if a user is already signed in. If a user with a verified email is found, it immediately
  * routes them to their saved Bible version page (fetched from Firestore or context).
  * Otherwise, it renders the sign‑in form with options for email/password, Google sign‑in,
@@ -15,7 +15,7 @@ import Head from "next/head";
 import Link from "next/link";
 import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
-import { useUserDataContext } from "../contexts/UserDataContext";
+import { useListenFireStore } from "../contexts/ListenFireStore";
 // Import the unified Firestore write hook.
 import useUserDataSync from "../hooks/useUserDataSync";
 
@@ -30,7 +30,7 @@ export default function Signin() {
   const router = useRouter();
 
   // Consume the centralized user data.
-  const { currentUser, loading } = useUserDataContext();
+  const { currentUser, loading } = useListenFireStore();
   // Get the unified update function from our hook.
   const { updateUserData } = useUserDataSync();
 

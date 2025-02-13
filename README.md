@@ -30,7 +30,7 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 │   └── PlanComponent.js       // Main planner component that orchestrates UI, schedule generation, and Excel export
 │
 ├── contexts/               
-│   └── UserDataContext.js     // Provides a React context for user authentication and Firestore data across the app
+│   └── ListenFireStore.js     // Provides a React context for user authentication and Firestore data across the app
 │
 ├── data/                    
 │   └── bibleBooks.js          // Exports OT_BOOKS and NT_BOOKS arrays containing Bible books and chapter counts

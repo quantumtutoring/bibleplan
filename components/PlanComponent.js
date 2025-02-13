@@ -4,7 +4,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 import { auth } from '../lib/firebase';
-import { useUserDataContext } from '../contexts/UserDataContext';
+import { useListenFireStore } from '../contexts/ListenFireStore';
 import debounce from 'lodash.debounce';
 import Header from './Header';
 import ControlsPanel from './ControlsPanel';
@@ -66,7 +66,7 @@ export default function PlanComponent() {
   const [customSchedule, setCustomSchedule] = useState(null);
   const lastCheckedRef = useRef(null);
 
-  const { currentUser, userData } = useUserDataContext();
+  const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = useUserDataSync();
 
   // Extract the updateSchedule function from the custom hook.
