@@ -20,16 +20,17 @@ import { useUserDataContext } from "../contexts/UserDataContext";
 import useUserDataSync from "../hooks/useUserDataSync";
 
 export default function Signin() {
-  // State variables for email, password, and user feedback.
+  // State variables for email, password, user feedback, and loading.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
   const [shouldRender, setShouldRender] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   // Consume the centralized user data.
-  const { currentUser, userData, loading } = useUserDataContext();
+  const { currentUser, loading } = useUserDataContext();
   // Get the unified update function from our hook.
   const { updateUserData } = useUserDataSync();
 
@@ -63,6 +64,7 @@ export default function Signin() {
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage(""); // Clear previous messages.
+    setIsLoading(true);
     try {
       console.log("[Signin] Attempting sign in with email:", email);
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
@@ -92,6 +94,8 @@ export default function Signin() {
         setMessage("Error signing in: " + error.message);
       }
       setMsgType("error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -99,6 +103,7 @@ export default function Signin() {
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
+    setIsLoading(true);
     try {
       console.log("[Signin] Creating new account for email:", email);
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -106,7 +111,6 @@ export default function Signin() {
       console.log("[Signin] Account created:", user);
 
       // Retrieve default settings from localStorage or use defaults.
-      // Parse numeric values so that they are stored correctly.
       const otChapters = localStorage.getItem("otChapters")
         ? Number(JSON.parse(localStorage.getItem("otChapters")))
         : 2;
@@ -129,8 +133,7 @@ export default function Signin() {
       const storedCustomSchedule = localStorage.getItem("customSchedule")
         ? JSON.parse(localStorage.getItem("customSchedule"))
         : null;
-      // IMPORTANT: Strip out URL fields from the custom schedule
-      // since URLs can be generated later.
+      // Strip out URL fields from the custom schedule.
       const customScheduleToStore = storedCustomSchedule
         ? storedCustomSchedule.map(item => ({
             day: item.day,
@@ -141,13 +144,12 @@ export default function Signin() {
       console.log("[Signin] Populating Firestore with all local data for new user.");
 
       // Update Firestore with settings, default progress, custom progress, custom schedule, and planner mode.
-      // Note: We're now saving default progress under the key "defaultProgress" and omitting any default schedule passages.
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
         defaultProgress: progressMap,
         customProgress: customProgressMap,
         customSchedule: customScheduleToStore,
-        isCustomSchedule: false // <-- default planner mode
+        isCustomSchedule: false
       });
 
       // Send an email verification.
@@ -168,6 +170,8 @@ export default function Signin() {
         setMessage("Error signing up: " + error.message);
       }
       setMsgType("error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -175,6 +179,7 @@ export default function Signin() {
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
+    setIsLoading(true);
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
       console.log("[Signin] Attempting Google sign in.");
@@ -190,6 +195,8 @@ export default function Signin() {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
       setMsgType("error");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -256,17 +263,19 @@ export default function Signin() {
           </div>
           <div className={styles.authButtons}>
             <div className={styles.emailAuth}>
-              <button type="submit" className={styles.signIn}>Sign In</button>
-              <button type="button" className={styles.signUp} onClick={handleSignUp}>
-                Create Account
+              <button type="submit" className={styles.signIn} disabled={isLoading}>
+                {isLoading ? "Processing..." : "Sign In"}
+              </button>
+              <button type="button" className={styles.signUp} onClick={handleSignUp} disabled={isLoading}>
+                {isLoading ? "Processing..." : "Create Account"}
               </button>
             </div>
-            <button type="button" className={styles.googleSignin} onClick={handleGoogleSignIn}>
+            <button type="button" className={styles.googleSignin} onClick={handleGoogleSignIn} disabled={isLoading}>
               <img
                 src="https://developers.google.com/identity/images/g-logo.png"
                 alt="Google logo"
               />
-              Sign in with Google
+              {isLoading ? "Processing..." : "Sign in with Google"}
             </button>
           </div>
           <div className={styles.resetPassword}>
