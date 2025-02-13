@@ -33,7 +33,7 @@ export default function PlanComponent() {
 
   // Save the current version to localStorage so that index.js can read it.
   useEffect(() => {
-    setItem("version", currentVersion);
+    setItem('version', currentVersion);
   }, [currentVersion, setItem]);
 
   // When the user selects a new version from the dropdown, navigate to that route.
@@ -45,9 +45,9 @@ export default function PlanComponent() {
 
   const [firestoreReads, setFirestoreReads] = useState(0);
   const [firestoreWrites, setFirestoreWrites] = useState(0);
-  const incrementFirestoreReads = () => setFirestoreReads(prev => prev + 1);
+  const incrementFirestoreReads = () => setFirestoreReads((prev) => prev + 1);
   const incrementFirestoreWrites = () => {
-    setFirestoreWrites(prev => {
+    setFirestoreWrites((prev) => {
       const newVal = prev + 1;
       console.log(`[PlanComponent] incrementFirestoreWrites: ${newVal}`);
       return newVal;
@@ -93,9 +93,13 @@ export default function PlanComponent() {
   // Run only once on mount.
   useEffect(() => {
     const storedOT = getItem('otChapters', null);
-    if (storedOT !== null) { setOtChapters(Number(storedOT)); }
+    if (storedOT !== null) {
+      setOtChapters(Number(storedOT));
+    }
     const storedNT = getItem('ntChapters', null);
-    if (storedNT !== null) { setNtChapters(Number(storedNT)); }
+    if (storedNT !== null) {
+      setNtChapters(Number(storedNT));
+    }
     const storedDefaultSchedule = getItem('defaultSchedule', null);
     if (storedDefaultSchedule) {
       console.log('[PlanComponent] Restoring default schedule from localStorage.');
@@ -107,9 +111,13 @@ export default function PlanComponent() {
       setCustomSchedule(storedCustomSchedule);
     }
     const storedDefaultProgress = getItem('progressMap', null);
-    if (storedDefaultProgress) { setDefaultProgressMap(storedDefaultProgress); }
+    if (storedDefaultProgress) {
+      setDefaultProgressMap(storedDefaultProgress);
+    }
     const storedCustomProgress = getItem('customProgressMap', null);
-    if (storedCustomProgress) { setCustomProgressMap(storedCustomProgress); }
+    if (storedCustomProgress) {
+      setCustomProgressMap(storedCustomProgress);
+    }
     const savedMode = getItem('isCustomSchedule', false);
     setIsCustomSchedule(savedMode);
     if (!storedDefaultSchedule && !userData) {
@@ -151,7 +159,7 @@ export default function PlanComponent() {
         console.log('[PlanComponent] Restoring custom schedule from Firestore.');
         setCustomSchedule(userData.customSchedule);
       }
-      if (typeof userData.isCustomSchedule === "boolean") {
+      if (typeof userData.isCustomSchedule === 'boolean') {
         setIsCustomSchedule(userData.isCustomSchedule);
       }
     }
@@ -165,6 +173,8 @@ export default function PlanComponent() {
    * - A stripped custom schedule (without URL fields) for Firestore.
    *
    * For default schedules, the link text now uses a comma instead of a pipe.
+   *
+   * Updated to prevent updates if custom schedule is unchanged.
    */
   const updateSchedule = (
     scheduleOrOt,
@@ -176,23 +186,53 @@ export default function PlanComponent() {
     // Custom schedule branch.
     if (Array.isArray(scheduleOrOt)) {
       console.log('[PlanComponent] Custom schedule provided.');
+
+      // Prevent update if the custom schedule is unchanged (unless forced)
+      if (
+        !forceUpdate &&
+        customSchedule &&
+        customSchedule.length === scheduleOrOt.length
+      ) {
+        let unchanged = true;
+        for (let i = 0; i < scheduleOrOt.length; i++) {
+          if (customSchedule[i].passages !== scheduleOrOt[i].passages) {
+            unchanged = false;
+            break;
+          }
+        }
+        if (unchanged) {
+          console.log(
+            '[PlanComponent] Custom schedule unchanged; schedule remains the same.'
+          );
+          return;
+        }
+      }
+
       // Generate the full custom schedule (with URLs) for local use.
-      const fullCustomSchedule = scheduleOrOt.map(item => {
+      const fullCustomSchedule = scheduleOrOt.map((item) => {
         let newUrl;
         if (currentVersion === 'lsb') {
-          newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         } else if (currentVersion === 'esv') {
-          newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         } else {
-          newUrl = `https://www.literalword.com/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://www.literalword.com/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         }
         return { ...item, url: newUrl };
       });
       // Create a stripped version (without URL fields) for Firestore.
-      const strippedCustomSchedule = fullCustomSchedule.map(({ day, passages }) => ({
-        day,
-        passages,
-      }));
+      const strippedCustomSchedule = fullCustomSchedule.map(
+        ({ day, passages }) => ({
+          day,
+          passages,
+        })
+      );
       setCustomSchedule(fullCustomSchedule);
       setIsCustomSchedule(true);
       setItem('isCustomSchedule', true);
@@ -202,7 +242,7 @@ export default function PlanComponent() {
       }
       // Store the full custom schedule locally.
       setItem('customSchedule', fullCustomSchedule);
-      // Combine custom schedule update and clearing progress (if needed) into one write.
+      // Write to Firestore.
       if (currentUser) {
         const updateData = { customSchedule: strippedCustomSchedule };
         if (clearProgress) {
@@ -211,9 +251,11 @@ export default function PlanComponent() {
         incrementFirestoreWrites();
         updateUserData(currentUser.uid, updateData)
           .then(() =>
-            console.log('[PlanComponent] Custom schedule saved to Firestore without URLs')
+            console.log(
+              '[PlanComponent] Custom schedule saved to Firestore without URLs'
+            )
           )
-          .catch(error =>
+          .catch((error) =>
             console.error('[PlanComponent] Error saving custom schedule:', error)
           );
       }
@@ -250,7 +292,10 @@ export default function PlanComponent() {
       console.log('[PlanComponent] Settings unchanged; schedule remains the same.');
       return;
     }
-    console.log('[PlanComponent] Updating default schedule' + (clearProgress ? ' with cleared progress.' : '.'));
+    console.log(
+      '[PlanComponent] Updating default schedule' +
+        (clearProgress ? ' with cleared progress.' : '.')
+    );
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
     // Generate the schedule.
@@ -270,11 +315,17 @@ export default function PlanComponent() {
       const ntText = (ntSchedule[day - 1] || '') + '';
       let url;
       if (currentVersion === 'lsb') {
-        url = `https://read.lsbible.org/?q=${encodeURIComponent(otText)}, ${encodeURIComponent(ntText)}`;
+        url = `https://read.lsbible.org/?q=${encodeURIComponent(
+          otText
+        )}, ${encodeURIComponent(ntText)}`;
       } else if (currentVersion === 'esv') {
-        url = `https://esv.literalword.com/?q=${encodeURIComponent(otText)}, ${encodeURIComponent(ntText)}`;
+        url = `https://esv.literalword.com/?q=${encodeURIComponent(
+          otText
+        )}, ${encodeURIComponent(ntText)}`;
       } else {
-        url = `https://www.literalword.com/?q=${encodeURIComponent(otText)}, ${encodeURIComponent(ntText)}`;
+        url = `https://www.literalword.com/?q=${encodeURIComponent(
+          otText
+        )}, ${encodeURIComponent(ntText)}`;
       }
       // Use a comma separator for default schedule display.
       const linkText = `${otText}, ${ntText}`;
@@ -289,7 +340,7 @@ export default function PlanComponent() {
     setSchedule(newSchedule);
     setItem('defaultSchedule', newSchedule);
 
-    // Combine the settings and schedule updates into a single Firestore write.
+    // Firestore update for default schedule.
     if (currentUser) {
       const updateData = {
         settings: { otChapters: otNum, ntChapters: ntNum },
@@ -300,8 +351,14 @@ export default function PlanComponent() {
       }
       incrementFirestoreWrites();
       updateUserData(currentUser.uid, updateData)
-        .then(() => console.log('[PlanComponent] Default schedule and settings saved to Firestore'))
-        .catch(error => console.error('[PlanComponent] Error saving default schedule:', error));
+        .then(() =>
+          console.log(
+            '[PlanComponent] Default schedule and settings saved to Firestore'
+          )
+        )
+        .catch((error) =>
+          console.error('[PlanComponent] Error saving default schedule:', error)
+        );
     }
   };
 
@@ -311,14 +368,20 @@ export default function PlanComponent() {
   // Recalculate schedule links whenever currentVersion, activeSchedule, or isCustomSchedule changes.
   useEffect(() => {
     if (activeSchedule && activeSchedule.length > 0) {
-      const updatedSchedule = activeSchedule.map(item => {
+      const updatedSchedule = activeSchedule.map((item) => {
         let newUrl;
         if (currentVersion === 'lsb') {
-          newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         } else if (currentVersion === 'esv') {
-          newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         } else {
-          newUrl = `https://www.literalword.com/?q=${encodeURIComponent(item.passages)}`;
+          newUrl = `https://www.literalword.com/?q=${encodeURIComponent(
+            item.passages
+          )}`;
         }
         return { ...item, url: newUrl };
       });
@@ -371,7 +434,7 @@ export default function PlanComponent() {
 
   const debouncedSaveRef = useRef(null);
   useEffect(() => {
-    debouncedSaveRef.current = debounce(newProg => {
+    debouncedSaveRef.current = debounce((newProg) => {
       if (currentUserRef.current) {
         console.log('[PlanComponent] Debounced function triggered. Writing progress:', newProg);
         incrementFirestoreWrites();
@@ -383,7 +446,7 @@ export default function PlanComponent() {
             console.log('[PlanComponent] Progress write successful');
             setSyncPending(false);
           })
-          .catch(error =>
+          .catch((error) =>
             console.error('[PlanComponent] Error saving progress:', error)
           );
       }
