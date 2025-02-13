@@ -1,11 +1,10 @@
-// components/ControlsPanel.js
 import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const ControlsPanel = ({
-  version,               // The current version from parent state
-  setCurrentVersion,     // A setter for updating the version
+  version,                // current version from parent state
+  handleVersionChange,    // function to update version (writes to Firestore if signed in)
   otChapters,
   setOtChapters,
   ntChapters,
@@ -14,13 +13,13 @@ const ControlsPanel = ({
   exportToExcel,
   customSchedule,
   isCustomSchedule,
-  setIsCustomSchedule
+  handleModeChange        // function to update mode (writes to Firestore if signed in)
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // Adjust the textarea height based on content.
+  // Adjust the textarea height.
   const handleTextareaInput = useCallback((e) => {
     e.target.style.height = 'auto';
     e.target.style.height = `${e.target.scrollHeight}px`;
@@ -29,48 +28,46 @@ const ControlsPanel = ({
 
   const toggleCustomizeMode = useCallback(() => {
     console.log('Current isCustomSchedule:', isCustomSchedule);
-
     if (isCustomSchedule) {
       console.log('Switching from CUSTOM -> DEFAULT');
-      // Exiting custom mode: regenerate default schedule
+      // Regenerate default schedule.
       updateSchedule(otChapters, ntChapters, false, true, false);
-      setIsCustomSchedule(false);
+      // Update mode locally and in Firestore.
+      handleModeChange(false);
       if (router.pathname !== '/') {
         console.log('Routing to /');
         router.push('/');
       }
     } else {
       console.log('Switching from DEFAULT -> CUSTOM');
-      // Entering custom mode
       if (customSchedule && customSchedule.length > 0) {
         updateSchedule(customSchedule, undefined, false, false, false);
       } else {
         updateSchedule([], undefined, false, false, false);
       }
-      setIsCustomSchedule(true);
+      handleModeChange(true);
       if (router.pathname !== '/custom') {
         console.log('Routing to /custom');
         router.push('/custom');
       }
     }
-  }, [isCustomSchedule, otChapters, ntChapters, customSchedule, router, updateSchedule, setIsCustomSchedule]);
+  }, [isCustomSchedule, otChapters, ntChapters, customSchedule, router, updateSchedule, handleModeChange]);
 
-  const handleVersionChange = useCallback((e) => {
-    setCurrentVersion(e.target.value);
-  }, [setCurrentVersion]);
+  const handleVersionChangeInternal = useCallback((e) => {
+    handleVersionChange(e.target.value);
+  }, [handleVersionChange]);
 
-  // Helper function to format a Bible reference string.
+  // Helper function for Bible reference formatting.
   const formatBibleReference = (str) => {
     if (!str) return "";
     let formatted = str.trim();
     formatted = formatted.replace(/([,;])(?!\s)/g, "$1 ");
     formatted = formatted.replace(/([A-Za-z]+)(\d+)/g, "$1 $2");
     formatted = formatted.replace(/(\d+)([A-Za-z]+)/g, "$1 $2");
-    formatted = formatted
+    return formatted
       .split(/\s+/)
       .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join(" ");
-    return formatted;
   };
 
   const handleCreateSchedule = useCallback(() => {
@@ -79,12 +76,10 @@ const ControlsPanel = ({
         .split('\n')
         .map(line => line.trim())
         .filter(line => line !== '');
-      
       if (lines.length < 1 || lines.length > 2000) {
         alert('Please enter between 1 and 2000 lines for your custom plan.');
         return;
       }
-      
       const customScheduleArr = lines.map((line, index) => {
         const formattedLine = formatBibleReference(line);
         let url;
@@ -107,7 +102,7 @@ const ControlsPanel = ({
     <div>
       {/* Version dropdown */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <select value={version} onChange={handleVersionChange}>
+        <select value={version} onChange={handleVersionChangeInternal}>
           <option value="nasb">NASB</option>
           <option value="lsb">LSB</option>
           <option value="esv">ESV</option>

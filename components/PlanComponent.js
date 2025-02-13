@@ -18,7 +18,7 @@ export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem } = useLocalStorage();
   const router = useRouter();
 
-  // Track client-side mount.
+  // Client-side mount flag.
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -26,24 +26,39 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // Use localStorage when signed out; when signed in, Firebase data is loaded once.
-  const [currentVersion, setCurrentVersion] = useState(() => getItem('version', 'nasb') || 'nasb');
-  const [otChapters, setOtChapters] = useState(() => Number(getItem('otChapters', '2')));
-  const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', '1')));
-  const [isCustomSchedule, setIsCustomSchedule] = useState(false);
+  // When signed out, use localStorage; when signed in, Firestore is used.
+  // (While signed in, localStorage updates for these keys are skipped.)
+  const [currentVersion, setCurrentVersion] = useState(() =>
+    currentUser ? "nasb" : (getItem('version', 'nasb') || 'nasb')
+  );
+  const [otChapters, setOtChapters] = useState(() =>
+    currentUser ? 2 : Number(getItem('otChapters', '2'))
+  );
+  const [ntChapters, setNtChapters] = useState(() =>
+    currentUser ? 1 : Number(getItem('ntChapters', '1'))
+  );
+  const [isCustomSchedule, setIsCustomSchedule] = useState(() =>
+    currentUser ? false : getItem('isCustomSchedule', false)
+  );
 
-  // NEW: Flag so that we load the Firebase version/mode only on first sign in.
+  // Flags to ensure that Firestore version and mode are loaded only once upon sign in.
   const [initialVersionLoaded, setInitialVersionLoaded] = useState(false);
   const [initialModeLoaded, setInitialModeLoaded] = useState(false);
 
   // Schedules & progress.
   const [schedule, setSchedule] = useState([]);
-  const [defaultProgressMap, setDefaultProgressMap] = useState({});
-  const [customProgressMap, setCustomProgressMap] = useState({});
-  const [customSchedule, setCustomSchedule] = useState(null);
+  const [defaultProgressMap, setDefaultProgressMap] = useState(() =>
+    currentUser ? {} : getItem('progressMap', {})
+  );
+  const [customProgressMap, setCustomProgressMap] = useState(() =>
+    currentUser ? {} : getItem('customProgressMap', {})
+  );
+  const [customSchedule, setCustomSchedule] = useState(() =>
+    currentUser ? null : getItem('customSchedule', null)
+  );
   const lastCheckedRef = useRef(null);
 
-  // Our schedule update hook.
+  // Schedule update hook.
   const updateSchedule = useUpdateSchedule({
     currentVersion,
     setSchedule,
@@ -56,32 +71,29 @@ export default function PlanComponent({ forcedMode }) {
     currentUser,
   });
 
-  // On mount: apply forced mode (if any) and restore localStorage data.
+  // On mount: apply forced mode (if any) and restore localStorage data (when signed out).
   useEffect(() => {
     if (forcedMode === 'default') {
-      console.log('[PlanComponent] Forcing Default Mode');
       setIsCustomSchedule(false);
       if (currentUser) {
         updateUserData(currentUser.uid, { isCustomSchedule: false })
-          .catch(err => console.error('[PlanComponent] Forced default error:', err));
+          .catch(console.error);
       }
     } else if (forcedMode === 'custom') {
-      console.log('[PlanComponent] Forcing Custom Mode');
       setIsCustomSchedule(true);
       if (currentUser) {
         updateUserData(currentUser.uid, { isCustomSchedule: true })
-          .catch(err => console.error('[PlanComponent] Forced custom error:', err));
+          .catch(console.error);
       }
     }
     const storedCustomSchedule = getItem('customSchedule', null);
-    if (forcedMode !== 'default' && storedCustomSchedule) {
-      console.log('[PlanComponent] Restoring custom schedule from localStorage.');
+    if (!currentUser && forcedMode !== 'default' && storedCustomSchedule) {
       setCustomSchedule(storedCustomSchedule);
     }
     const storedDefaultProgress = getItem('progressMap', null);
-    if (storedDefaultProgress) { setDefaultProgressMap(storedDefaultProgress); }
+    if (!currentUser && storedDefaultProgress) { setDefaultProgressMap(storedDefaultProgress); }
     const storedCustomProgress = getItem('customProgressMap', null);
-    if (storedCustomProgress) { setCustomProgressMap(storedCustomProgress); }
+    if (!currentUser && storedCustomProgress) { setCustomProgressMap(storedCustomProgress); }
     if (forcedMode === 'custom') {
       updateSchedule(storedCustomSchedule || [], undefined, true);
     } else if (forcedMode === 'default') {
@@ -95,38 +107,34 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, []); // run once on mount
 
-  // When signed out, write version and chapter numbers to localStorage.
+  // Write settings to localStorage only if signed out.
   useEffect(() => {
-    if (!currentUser) { 
-      setItem('version', currentVersion);
-    }
+    if (!currentUser) { setItem('version', currentVersion); }
   }, [currentVersion, currentUser, setItem]);
-  useEffect(() => { setItem('otChapters', String(otChapters)); }, [otChapters, setItem]);
-  useEffect(() => { setItem('ntChapters', String(ntChapters)); }, [ntChapters, setItem]);
+  useEffect(() => {
+    if (!currentUser) { setItem('otChapters', String(otChapters)); }
+  }, [otChapters, currentUser, setItem]);
+  useEffect(() => {
+    if (!currentUser) { setItem('ntChapters', String(ntChapters)); }
+  }, [ntChapters, currentUser, setItem]);
+  useEffect(() => {
+    if (!currentUser) { setItem('isCustomSchedule', isCustomSchedule); }
+  }, [isCustomSchedule, currentUser, setItem]);
 
-  // Merge Firestore settings (OT, NT) into state when signed in.
+  // Merge Firestore settings (OT, NT) when signed in.
   useEffect(() => {
     if (currentUser && userData && userData.settings) {
       const { otChapters: fsOT, ntChapters: fsNT } = userData.settings;
-      if (fsOT && Number(fsOT) !== otChapters) {
-        const newOT = Number(fsOT);
-        setOtChapters(newOT);
-        setItem('otChapters', String(newOT));
-      }
-      if (fsNT && Number(fsNT) !== ntChapters) {
-        const newNT = Number(fsNT);
-        setNtChapters(newNT);
-        setItem('ntChapters', String(newNT));
-      }
+      if (fsOT && Number(fsOT) !== otChapters) { setOtChapters(Number(fsOT)); }
+      if (fsNT && Number(fsNT) !== ntChapters) { setNtChapters(Number(fsNT)); }
     }
-  }, [currentUser, userData?.settings, otChapters, ntChapters, setItem]);
+  }, [currentUser, userData?.settings, otChapters, ntChapters]);
 
   // Merge Firestore version only once on first sign in.
   useEffect(() => {
     if (currentUser && userData && userData.settings && !initialVersionLoaded) {
       const fsVersion = userData.settings.version;
       if (fsVersion && fsVersion !== currentVersion) {
-        console.log('[PlanComponent] Setting version from Firestore on first sign in:', fsVersion);
         setCurrentVersion(fsVersion);
       }
       setInitialVersionLoaded(true);
@@ -136,29 +144,25 @@ export default function PlanComponent({ forcedMode }) {
   // Merge Firestore mode only once on first sign in.
   useEffect(() => {
     if (currentUser && userData && typeof userData.isCustomSchedule === 'boolean' && !initialModeLoaded) {
-      console.log('[PlanComponent] Setting mode from Firestore on first sign in:', userData.isCustomSchedule);
       setIsCustomSchedule(userData.isCustomSchedule);
       setInitialModeLoaded(true);
     }
   }, [currentUser, userData, initialModeLoaded]);
 
-  // NOTE: We do NOT update Firebase on version or mode changes until sign out.
-  // Other Firestore data (progress, custom schedule) continues to merge.
+  // Merge Firestore progress, custom schedule.
   useEffect(() => {
-    if (!userData) return;
-    if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
-      setDefaultProgressMap(userData.defaultProgress);
-      setItem('progressMap', userData.defaultProgress);
+    if (currentUser && userData) {
+      if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
+        setDefaultProgressMap(userData.defaultProgress);
+      }
+      if (userData.customProgress && !isEqual(userData.customProgress, customProgressMap)) {
+        setCustomProgressMap(userData.customProgress);
+      }
+      if (userData.customSchedule && !isEqual(userData.customSchedule, customSchedule)) {
+        setCustomSchedule(userData.customSchedule);
+      }
     }
-    if (userData.customProgress && !isEqual(userData.customProgress, customProgressMap)) {
-      setCustomProgressMap(userData.customProgress);
-      setItem('customProgressMap', userData.customProgress);
-    }
-    if (userData.customSchedule && !isEqual(userData.customSchedule, customSchedule)) {
-      console.log('[PlanComponent] Restoring custom schedule from Firestore.');
-      setCustomSchedule(userData.customSchedule);
-    }
-  }, [userData, setItem, defaultProgressMap, customProgressMap, customSchedule]);
+  }, [currentUser, userData, defaultProgressMap, customProgressMap, customSchedule]);
 
   const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
   const activeSchedule = isCustomSchedule ? customSchedule : schedule;
@@ -189,6 +193,7 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentVersion, activeSchedule, isCustomSchedule]);
 
+  // Handler for checkbox changes.
   const handleCheckboxChange = (day, checked, event) => {
     const currentProgress = isCustomSchedule ? customProgressMap : defaultProgressMap;
     let newProg;
@@ -198,17 +203,17 @@ export default function PlanComponent({ forcedMode }) {
       newProg = { ...currentProgress };
       for (let i = start; i <= end; i++) {
         newProg[i] = checked;
-        setItem('check-day-' + i, checked ? 'true' : 'false');
       }
     } else {
       newProg = { ...currentProgress, [day]: checked };
-      setItem('check-day-' + day, checked ? 'true' : 'false');
     }
     if (isCustomSchedule) {
       setCustomProgressMap(newProg);
-      setItem('customProgressMap', newProg);
     } else {
       setDefaultProgressMap(newProg);
+    }
+    // If signed out, update localStorage.
+    if (!currentUser) {
       setItem('progressMap', newProg);
     }
     setSyncPending(true);
@@ -231,13 +236,30 @@ export default function PlanComponent({ forcedMode }) {
           : { defaultProgress: newProg };
         updateUserData(currentUserRef.current.uid, updateField)
           .then(() => setSyncPending(false))
-          .catch(error => console.error('[PlanComponent] Error saving progress:', error));
+          .catch(console.error);
       }
     }, 1000);
     return () => { debouncedSaveRef.current.cancel(); };
   }, [isCustomSchedule, updateUserData]);
 
   const handleExportExcel = () => { exportScheduleToExcel(activeSchedule, activeProgressMap); };
+
+  // NEW: Handlers for version and mode changes.
+  const handleVersionChange = (newVersion) => {
+    setCurrentVersion(newVersion);
+    if (currentUser) {
+      updateUserData(currentUser.uid, { settings: { version: newVersion } })
+        .catch(console.error);
+    }
+  };
+
+  const handleModeChange = (newMode) => {
+    setIsCustomSchedule(newMode);
+    if (currentUser) {
+      updateUserData(currentUser.uid, { settings: { isCustomSchedule: newMode } })
+        .catch(console.error);
+    }
+  };
 
   if (!mounted) return null; // SSR guard
 
@@ -248,15 +270,16 @@ export default function PlanComponent({ forcedMode }) {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
       <Header
-  currentUser={currentUser}
-  version={currentVersion}
-  isCustomSchedule={isCustomSchedule}
-  syncPending={syncPending}
+        currentUser={currentUser}
+        syncPending={syncPending}
+        exportToExcel={handleExportExcel}
+        version={currentVersion}
+        isCustomSchedule={isCustomSchedule}
       />
       <div className={styles.container} id="main-content">
         <ControlsPanel
           version={currentVersion}
-          setCurrentVersion={setCurrentVersion}
+          handleVersionChange={handleVersionChange}
           otChapters={otChapters}
           setOtChapters={setOtChapters}
           ntChapters={ntChapters}
@@ -265,7 +288,7 @@ export default function PlanComponent({ forcedMode }) {
           exportToExcel={handleExportExcel}
           customSchedule={customSchedule}
           isCustomSchedule={isCustomSchedule}
-          setIsCustomSchedule={setIsCustomSchedule}
+          handleModeChange={handleModeChange}
         />
         {activeSchedule && activeSchedule.length > 0 && (
           <ScheduleTable

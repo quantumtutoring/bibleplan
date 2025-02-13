@@ -4,40 +4,32 @@ import styles from '../styles/Home.module.css';
 import { auth } from '../lib/firebase';
 import writeFireStore from '../hooks/writeFireStore';
 
-export default function Header({ currentUser, version, isCustomSchedule, syncPending, exportToExcel }) {
+export default function Header({ currentUser, syncPending, exportToExcel, version, isCustomSchedule }) {
   const router = useRouter();
   const { updateUserData } = writeFireStore();
 
   const handleSignOut = async () => {
     try {
-      // 1) Before signing out, update Firebase with the current version and mode from state.
+      // Update Firestore with the current version and mode (from state/PlanComponent)
       if (currentUser) {
         await updateUserData(currentUser.uid, {
           settings: { version, isCustomSchedule }
         });
       }
-
-      // 2) Sign out from Firebase.
       await auth.signOut();
 
-      // 3) Remove user-specific keys from localStorage.
+      // Remove user-specific keys from localStorage.
       localStorage.removeItem("customSchedule");
       localStorage.removeItem("progressMap");
       localStorage.removeItem("customProgressMap");
       localStorage.removeItem("customPlanText");
 
-      // 4) Navigate to the home page.
       await router.push('/');
-
-      // 5) Force a full reload so that the PlanComponent remounts fresh.
       router.reload();
     } catch (error) {
       console.error("Sign out error:", error);
     }
   };
-
-  // Build query parameters for the sign in link.
-  const signinHref = `/signin?version=${encodeURIComponent(version)}&mode=${isCustomSchedule ? 'custom' : 'default'}`;
 
   return (
     <div className={styles.header} id="auth-header">
@@ -54,7 +46,7 @@ export default function Header({ currentUser, version, isCustomSchedule, syncPen
           </button>
         </div>
       ) : (
-        <Link href={signinHref}>Sign in</Link>
+        <Link href="/signin">Sign in</Link>
       )}
     </div>
   );

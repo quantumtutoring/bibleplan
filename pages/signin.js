@@ -1,11 +1,9 @@
 /**
  * Signin.js - Handles user authentication.
  *
- * This file uses React state (with defaults) to track version and mode.
- * If query parameters are provided (e.g. ?version=esv&mode=custom), they override the defaults.
- *
- * After a successful sign-up, the Firestore user document is initialized with these state values.
- * Then, after sign-in, a useEffect fetches the user document and routes based on isCustomSchedule.
+ * When a user signs up, this component reads the settings from localStorage (version, mode,
+ * OT/NT, progress maps, and custom schedule) and uses them to initialize the new user's
+ * Firestore document. When a user signs in, Firestore is the source of truth.
  */
 
 import { useEffect, useState } from "react";
@@ -14,17 +12,15 @@ import Head from "next/head";
 import Link from "next/link";
 import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
-
-// Import Firestore methods for a direct getDoc call
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../lib/firebase";
-
 import { useListenFireStore } from "../contexts/ListenFireStore";
 import writeFireStore from "../hooks/writeFireStore";
+import useLocalStorage from "../hooks/useLocalStorage";
 
 export default function Signin() {
   const router = useRouter();
-  const { query } = router;
+  const { getItem } = useLocalStorage();
   const { currentUser, loading } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
@@ -32,27 +28,20 @@ export default function Signin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
-  const [msgType, setMsgType] = useState(""); // "error" or "success"
+  const [msgType, setMsgType] = useState("");
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Track version and mode entirely in state.
-  // Defaults: version "nasb" and default mode (isCustomSchedule false).
-  const [version, setVersion] = useState("nasb");
-  const [isCustomSchedule, setIsCustomSchedule] = useState(false);
+  // For sign-up, read default settings from localStorage.
+  const defaultVersion = getItem("version", "nasb");
+  const defaultIsCustom = getItem("isCustomSchedule", false);
+  const defaultOT = getItem("otChapters", 2);
+  const defaultNT = getItem("ntChapters", 1);
+  const defaultProgressMap = getItem("progressMap", {});
+  const defaultCustomProgressMap = getItem("customProgressMap", {});
+  const defaultCustomSchedule = getItem("customSchedule", null);
 
-  // Optional: override defaults from URL query parameters.
-  useEffect(() => {
-    if (query.version) {
-      setVersion(query.version);
-    }
-    if (query.mode) {
-      // Expecting mode to be "custom" or "default"
-      setIsCustomSchedule(query.mode === "custom");
-    }
-  }, [query]);
-
-  // Once the user is signed in and verified, fetch their Firestore doc and route accordingly.
+  // Once the user is signed in and verified, fetch their Firestore document and route.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
@@ -84,7 +73,7 @@ export default function Signin() {
     }
   }, [loading, currentUser, router]);
 
-  // Sign In handler remains unchanged.
+  // Sign In handler.
   const handleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -119,7 +108,7 @@ export default function Signin() {
     }
   };
 
-  // Sign Up handler: uses state for version and mode.
+  // Sign Up handler: Use localStorage values to initialize Firestore.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -127,24 +116,17 @@ export default function Signin() {
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      // For a new user, we use our state values.
-      // Here we assume OT and NT defaults remain as defined.
-      const otChaptersDefault = 2;
-      const ntChaptersDefault = 1;
-      const progressMap = {};
-      const customProgressMap = {};
-      const customScheduleToStore = null;
-
-      // Initialize Firestore doc with the state values.
       await updateUserData(user.uid, {
-        settings: { otChapters: otChaptersDefault, ntChapters: ntChaptersDefault, version },
-        defaultProgress: progressMap,
-        customProgress: customProgressMap,
-        customSchedule: customScheduleToStore,
-        isCustomSchedule
+        settings: { 
+          otChapters: defaultOT, 
+          ntChapters: defaultNT, 
+          version: defaultVersion 
+        },
+        defaultProgress: defaultProgressMap,
+        customProgress: defaultCustomProgressMap,
+        customSchedule: defaultCustomSchedule,
+        isCustomSchedule: defaultIsCustom
       });
-
-      // Send verification email.
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
@@ -176,7 +158,7 @@ export default function Signin() {
       await auth.signInWithPopup(provider);
       setMessage("Google sign in successful!");
       setMsgType("success");
-      // Routing will be handled by the effect above.
+      // Routing handled by useEffect.
     } catch (error) {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
