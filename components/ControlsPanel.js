@@ -109,15 +109,22 @@ const ControlsPanel = ({
         </select>
       </div>
       {/* Conditionally update the heading */}
-      <h1>{isCustomSchedule ? 'Custom Reading Planner' : 'Bible Reading Planner'}</h1>
+      <h1>{isCustomSchedule ? 'Bible Reading Planner' : 'Bible Reading Planner'}</h1>
       <div className={styles.controls}>
+                  {/* Desired dropdown near the bottom */}
+                  <span>
+            <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
+              <option value="default">Default Planner</option>
+              <option value="custom">Custom Planner</option>
+            </select>
+          </span>
         {isCustomSchedule ? (
           <div>
             <textarea
               ref={textareaRef}
               value={customPlanText}
               onInput={handleTextareaInput}
-              placeholder="Enter your custom passages here and press the generate button. Each line is a different day."
+              placeholder="Input Bible passages. Each line is a day's reading."
               className={styles.customTextArea}
             />
           </div>
@@ -146,20 +153,14 @@ const ControlsPanel = ({
         )}
         <div>
           <button onClick={handleCreateSchedule}>
-            {isCustomSchedule ? 'Generate Custom Schedule' : 'Generate Schedule'}
+            {isCustomSchedule ? 'Generate Schedule' : 'Generate Schedule'}
           </button>
 
           <button onClick={exportToExcel}>
               Export to Excel
           </button>
 
-          {/* Desired dropdown near the bottom */}
-          <span>
-            <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
-              <option value="default">Default Planner</option>
-              <option value="custom">Custom Planner</option>
-            </select>
-          </span>
+
         </div>
       </div>
     </div>
