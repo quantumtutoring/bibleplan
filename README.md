@@ -37,7 +37,6 @@ A Next.js/React Bible Reading Planner app that generates daily Bible reading sch
 │
 ├── hooks/                  
 │   ├── useLocalStorage.js     // Custom hook that abstracts localStorage interactions (getItem, setItem, removeItem, clear)
-│   ├── useUserData.js         // Custom hook that sets up Firebase authentication and Firestore snapshot listeners
 │   └── writeFireStore.js     // Unified hook that centralizes all Firestore write operations for the user’s document
 │
 ├── lib/                    
