@@ -1,9 +1,10 @@
 /**
  * Signin.js - Handles user authentication.
  *
- * When a user signs up, this component reads the settings from localStorage (version, mode,
- * OT/NT, progress maps, and custom schedule) and uses them to initialize the new user's
- * Firestore document. When a user signs in, Firestore is the source of truth.
+ * When a new user signs up, localStorage (via useLocalStorage hook) is used
+ * to obtain settings (version, isCustomSchedule, OT/NT, progress maps, custom schedule)
+ * to initialize the new user's Firestore document.
+ * When a returning user signs in, Firestore is used for routing.
  */
 
 import { useEffect, useState } from "react";
@@ -24,7 +25,7 @@ export default function Signin() {
   const { currentUser, loading } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // Local states for auth form.
+  // Local state for auth form.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -32,7 +33,7 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // For sign-up, read default settings from localStorage.
+  // Read defaults from localStorage.
   const defaultVersion = getItem("version", "nasb");
   const defaultIsCustom = getItem("isCustomSchedule", false);
   const defaultOT = getItem("otChapters", 2);
@@ -89,7 +90,6 @@ export default function Signin() {
       } else {
         setMessage("Sign in successful!");
         setMsgType("success");
-        // Routing is handled by the effect above.
       }
     } catch (error) {
       console.error("[Signin] Sign in error:", error);
@@ -117,10 +117,10 @@ export default function Signin() {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
       await updateUserData(user.uid, {
-        settings: { 
-          otChapters: defaultOT, 
-          ntChapters: defaultNT, 
-          version: defaultVersion 
+        settings: {
+          otChapters: defaultOT,
+          ntChapters: defaultNT,
+          version: defaultVersion
         },
         defaultProgress: defaultProgressMap,
         customProgress: defaultCustomProgressMap,
@@ -158,7 +158,6 @@ export default function Signin() {
       await auth.signInWithPopup(provider);
       setMessage("Google sign in successful!");
       setMsgType("success");
-      // Routing handled by useEffect.
     } catch (error) {
       console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
