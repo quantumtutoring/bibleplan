@@ -1,5 +1,4 @@
-//hooks/useUserData.js
-
+// hooks/useUserData.js
 import { useState, useEffect, useRef } from "react";
 import { auth, db } from "../lib/firebase";
 import { onAuthStateChanged } from "firebase/auth";
@@ -9,18 +8,16 @@ export default function useUserData() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  
-  // Use a ref to hold the Firestore listener unsubscribe function.
   const unsubscribeSnapshotRef = useRef(null);
+  const lastDataRef = useRef(null);
 
   useEffect(() => {
     console.log("[useUserData] Setting up auth listener");
-
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       console.log("[useUserData] Auth state changed:", user);
       setCurrentUser(user);
 
-      // If there's an existing Firestore listener, unsubscribe.
+      // Unsubscribe from any existing Firestore listener.
       if (unsubscribeSnapshotRef.current) {
         console.log("[useUserData] Unsubscribing from previous Firestore listener");
         unsubscribeSnapshotRef.current();
@@ -33,8 +30,13 @@ export default function useUserData() {
         unsubscribeSnapshotRef.current = onSnapshot(
           userDocRef,
           (docSnapshot) => {
-            console.log("[useUserData] Firestore snapshot received:", docSnapshot.data());
-            setUserData(docSnapshot.exists() ? docSnapshot.data() : null);
+            const newData = docSnapshot.exists() ? docSnapshot.data() : null;
+            // Compare newData with the last known data.
+            if (JSON.stringify(newData) !== JSON.stringify(lastDataRef.current)) {
+              console.log("[useUserData] Firestore snapshot received:", newData);
+              lastDataRef.current = newData;
+              setUserData(newData);
+            }
             setLoading(false);
           },
           (error) => {
@@ -50,7 +52,6 @@ export default function useUserData() {
       }
     });
 
-    // Cleanup both listeners on unmount.
     return () => {
       console.log("[useUserData] Cleaning up auth and Firestore listeners");
       if (unsubscribeSnapshotRef.current) {

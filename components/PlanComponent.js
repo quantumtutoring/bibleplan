@@ -75,7 +75,6 @@ export default function PlanComponent() {
   }, [currentUser]);
 
   // State for chapters, schedule, and progress maps.
-  // Use numbers for chapters.
   const [otChapters, setOtChapters] = useState(2);
   const [ntChapters, setNtChapters] = useState(1);
   const [schedule, setSchedule] = useState([]);
@@ -91,6 +90,7 @@ export default function PlanComponent() {
   const { updateUserData } = useUserDataSync();
 
   // Restore stored values (except version) from localStorage.
+  // Run only once on mount.
   useEffect(() => {
     const storedOT = getItem('otChapters', null);
     if (storedOT !== null) { setOtChapters(Number(storedOT)); }
@@ -116,7 +116,7 @@ export default function PlanComponent() {
       updateSchedule(storedOT || otChapters, storedNT || ntChapters, true);
     }
     initialScheduleLoaded.current = true;
-  }, [currentUser, loading]);
+  }, []); // Run only once on mount
 
   // Also update state from Firestore whenever userData changes.
   useEffect(() => {
@@ -157,55 +157,13 @@ export default function PlanComponent() {
     }
   }, [userData]);
 
-  const updateCombinedUserData = (ot, nt, updateProgress = true) => {
-    const data = {
-      settings: { otChapters: ot, ntChapters: nt }
-    };
-    if (updateProgress) {
-      data.progress = {};
-    }
-    updateUserDoc(data);
-  };
-
-  const updateUserDoc = (data) => {
-    if (data.settings) {
-      if (data.settings.otChapters !== undefined) {
-        setItem('otChapters', String(data.settings.otChapters));
-      }
-      if (data.settings.ntChapters !== undefined) {
-        setItem('ntChapters', String(data.settings.ntChapters));
-      }
-    }
-    if (data.progress !== undefined) {
-      setItem('progressMap', data.progress);
-    }
-    if (data.customProgress !== undefined) {
-      setItem('customProgressMap', data.customProgress);
-    }
-    if (data.schedule !== undefined) {
-      setItem('defaultSchedule', data.schedule);
-    }
-    if (data.customSchedule !== undefined) {
-      setItem('customSchedule', data.customSchedule);
-    }
-    for (let i = 1; i < 1000; i++) {
-      removeItem('check-day-' + i);
-    }
-    if (currentUser) {
-      console.log('[PlanComponent] Updating user document for user:', currentUser.uid, data);
-      incrementFirestoreWrites();
-      updateUserData(currentUser.uid, data)
-        .then(() => console.log('[PlanComponent] User document update successful'))
-        .catch(error => console.error('[PlanComponent] Error updating user document:', error));
-    }
-  };
-
   /**
    * updateSchedule:
    *
    * For custom schedules, we generate two versions:
    * - A full custom schedule with URLs for local use.
    * - A stripped custom schedule (without URL fields) for Firestore.
+   *
    * For default schedules, the link text now uses a comma instead of a pipe.
    */
   const updateSchedule = (
@@ -241,17 +199,23 @@ export default function PlanComponent() {
       if (clearProgress) {
         setCustomProgressMap({});
         setItem('customProgressMap', {});
-        if (currentUser) {
-          incrementFirestoreWrites();
-          updateUserData(currentUser.uid, { customProgress: {} });
-        }
       }
       // Store the full custom schedule locally.
       setItem('customSchedule', fullCustomSchedule);
+      // Combine custom schedule update and clearing progress (if needed) into one write.
       if (currentUser) {
-        updateUserData(currentUser.uid, { customSchedule: strippedCustomSchedule })
-          .then(() => console.log('[PlanComponent] Custom schedule saved to Firestore without URLs'))
-          .catch(error => console.error('[PlanComponent] Error saving custom schedule:', error));
+        const updateData = { customSchedule: strippedCustomSchedule };
+        if (clearProgress) {
+          updateData.customProgress = {};
+        }
+        incrementFirestoreWrites();
+        updateUserData(currentUser.uid, updateData)
+          .then(() =>
+            console.log('[PlanComponent] Custom schedule saved to Firestore without URLs')
+          )
+          .catch(error =>
+            console.error('[PlanComponent] Error saving custom schedule:', error)
+          );
       }
       setSchedule(fullCustomSchedule);
       return;
@@ -288,9 +252,8 @@ export default function PlanComponent() {
     }
     console.log('[PlanComponent] Updating default schedule' + (clearProgress ? ' with cleared progress.' : '.'));
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
-    if (!fromInit) {
-      updateCombinedUserData(otNum, ntNum, true);
-    }
+
+    // Generate the schedule.
     let otSchedule = [];
     let ntSchedule = [];
     try {
@@ -322,16 +285,22 @@ export default function PlanComponent() {
     if (clearProgress) {
       setDefaultProgressMap({});
       setItem('progressMap', {});
-      if (currentUser) {
-        incrementFirestoreWrites();
-        updateUserData(currentUser.uid, { defaultProgress: {} });
-      }
     }
     setSchedule(newSchedule);
     setItem('defaultSchedule', newSchedule);
+
+    // Combine the settings and schedule updates into a single Firestore write.
     if (currentUser) {
-      updateUserData(currentUser.uid, { schedule: newSchedule })
-        .then(() => console.log('[PlanComponent] Default schedule saved to Firestore'))
+      const updateData = {
+        settings: { otChapters: otNum, ntChapters: ntNum },
+        schedule: newSchedule,
+      };
+      if (clearProgress) {
+        updateData.defaultProgress = {};
+      }
+      incrementFirestoreWrites();
+      updateUserData(currentUser.uid, updateData)
+        .then(() => console.log('[PlanComponent] Default schedule and settings saved to Firestore'))
         .catch(error => console.error('[PlanComponent] Error saving default schedule:', error));
     }
   };
