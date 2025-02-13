@@ -26,15 +26,16 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // When signed out, use localStorage; when signed in, Firestore is the source.
+  // Use localStorage when signed out; when signed in, Firebase data is loaded once.
   const [currentVersion, setCurrentVersion] = useState(() => getItem('version', 'nasb') || 'nasb');
   const [otChapters, setOtChapters] = useState(() => Number(getItem('otChapters', '2')));
   const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', '1')));
   const [isCustomSchedule, setIsCustomSchedule] = useState(false);
 
-  // NEW: Flag to load Firestore mode (isCustomSchedule) only on first sign in.
+  // NEW: Flag so that we load the Firebase version/mode only on first sign in.
+  const [initialVersionLoaded, setInitialVersionLoaded] = useState(false);
   const [initialModeLoaded, setInitialModeLoaded] = useState(false);
-  
+
   // Schedules & progress.
   const [schedule, setSchedule] = useState([]);
   const [defaultProgressMap, setDefaultProgressMap] = useState({});
@@ -94,11 +95,12 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, []); // run once on mount
 
-  // When signed out, write version to localStorage.
+  // When signed out, write version and chapter numbers to localStorage.
   useEffect(() => {
-    if (!currentUser) { setItem('version', currentVersion); }
+    if (!currentUser) { 
+      setItem('version', currentVersion);
+    }
   }, [currentVersion, currentUser, setItem]);
-
   useEffect(() => { setItem('otChapters', String(otChapters)); }, [otChapters, setItem]);
   useEffect(() => { setItem('ntChapters', String(ntChapters)); }, [ntChapters, setItem]);
 
@@ -119,25 +121,29 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentUser, userData?.settings, otChapters, ntChapters, setItem]);
 
-  // Merge Firestore version only once (on first sign in).
+  // Merge Firestore version only once on first sign in.
   useEffect(() => {
-    if (currentUser && userData && userData.settings && !initialModeLoaded) {
-      const fsMode = userData.isCustomSchedule; // mode from firestore
-      console.log('[PlanComponent] Loading mode from Firestore on first sign in:', fsMode);
-      setIsCustomSchedule(fsMode);
+    if (currentUser && userData && userData.settings && !initialVersionLoaded) {
+      const fsVersion = userData.settings.version;
+      if (fsVersion && fsVersion !== currentVersion) {
+        console.log('[PlanComponent] Setting version from Firestore on first sign in:', fsVersion);
+        setCurrentVersion(fsVersion);
+      }
+      setInitialVersionLoaded(true);
+    }
+  }, [currentUser, userData?.settings, initialVersionLoaded, currentVersion]);
+
+  // Merge Firestore mode only once on first sign in.
+  useEffect(() => {
+    if (currentUser && userData && typeof userData.isCustomSchedule === 'boolean' && !initialModeLoaded) {
+      console.log('[PlanComponent] Setting mode from Firestore on first sign in:', userData.isCustomSchedule);
+      setIsCustomSchedule(userData.isCustomSchedule);
       setInitialModeLoaded(true);
     }
   }, [currentUser, userData, initialModeLoaded]);
 
-  // After the initial mode load, update Firestore when currentVersion changes.
-  useEffect(() => {
-    if (currentUser && initialModeLoaded) {
-      updateUserData(currentUser.uid, { settings: { version: currentVersion } })
-        .catch(error => console.error('[PlanComponent] Error updating version in Firestore:', error));
-    }
-  }, [currentVersion, currentUser, updateUserData, initialModeLoaded]);
-
-  // Merge Firestore progress, custom schedule, and isCustomSchedule (except for mode, which we load only initially).
+  // NOTE: We do NOT update Firebase on version or mode changes until sign out.
+  // Other Firestore data (progress, custom schedule) continues to merge.
   useEffect(() => {
     if (!userData) return;
     if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
@@ -152,7 +158,6 @@ export default function PlanComponent({ forcedMode }) {
       console.log('[PlanComponent] Restoring custom schedule from Firestore.');
       setCustomSchedule(userData.customSchedule);
     }
-    // Note: We no longer merge isCustomSchedule after initial load.
   }, [userData, setItem, defaultProgressMap, customProgressMap, customSchedule]);
 
   const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
@@ -243,9 +248,10 @@ export default function PlanComponent({ forcedMode }) {
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
       <Header
-        currentUser={currentUser}
-        syncPending={syncPending}
-        exportToExcel={handleExportExcel}
+  currentUser={currentUser}
+  version={currentVersion}
+  isCustomSchedule={isCustomSchedule}
+  syncPending={syncPending}
       />
       <div className={styles.container} id="main-content">
         <ControlsPanel
