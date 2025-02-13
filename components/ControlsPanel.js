@@ -16,20 +16,16 @@ const ControlsPanel = ({
   isCustomSchedule,
   setIsCustomSchedule
 }) => {
-  const { /* getItem, */ setItem } = useLocalStorage();
+  const { setItem } = useLocalStorage();
   // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // Removed restoration effect from localStorage.
-  // The textfield value is now transient (only in state).
-
+  // Adjust the textarea height based on content.
   const handleTextareaInput = (e) => {
     e.target.style.height = 'auto';
     e.target.style.height = e.target.scrollHeight + 'px';
-    const newText = e.target.value;
-    setCustomPlanText(newText);
-    // Do NOT save customPlanText to localStorage.
+    setCustomPlanText(e.target.value);
   };
 
   const toggleCustomizeMode = () => {
@@ -88,6 +84,7 @@ const ControlsPanel = ({
       });
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
+      // The updateSchedule function will validate the OT/NT numbers.
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
   };
@@ -128,7 +125,7 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={otChapters}
-                onChange={(e) => setOtChapters(Number(e.target.value))}
+                onChange={(e) => setOtChapters(e.target.value)}
               />
             </label>
             <br />
@@ -138,7 +135,7 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={ntChapters}
-                onChange={(e) => setNtChapters(Number(e.target.value))}
+                onChange={(e) => setNtChapters(e.target.value)}
               />
             </label>
           </div>
