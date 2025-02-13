@@ -1,9 +1,9 @@
 /**
  * Signin.js - Handles user authentication.
  *
- * When a new user signs up, localStorage (via useLocalStorage hook) is used
- * to obtain settings (version, isCustomSchedule, OT/NT, progress maps, custom schedule)
- * to initialize the new user's Firestore document.
+ * When a new user signs up, localStorage (via useLocalStorage) is used to obtain settings
+ * (version, isCustomSchedule, OT/NT as strings, progress maps, custom schedule) to initialize
+ * the new user's Firestore document.
  * When a returning user signs in, Firestore is used for routing.
  */
 
@@ -25,7 +25,7 @@ export default function Signin() {
   const { currentUser, loading } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // Local state for auth form.
+  // Local states for the auth form.
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -33,16 +33,16 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Read defaults from localStorage.
+  // Read default settings from localStorage. Note OT/NT are strings.
   const defaultVersion = getItem("version", "nasb");
   const defaultIsCustom = getItem("isCustomSchedule", false);
-  const defaultOT = getItem("otChapters", 2);
-  const defaultNT = getItem("ntChapters", 1);
+  const defaultOT = getItem("otChapters", "2");
+  const defaultNT = getItem("ntChapters", "1");
   const defaultProgressMap = getItem("progressMap", {});
   const defaultCustomProgressMap = getItem("customProgressMap", {});
   const defaultCustomSchedule = getItem("customSchedule", null);
 
-  // Once the user is signed in and verified, fetch their Firestore document and route.
+  // When a user is signed in and verified, fetch their Firestore doc and route.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
@@ -108,7 +108,7 @@ export default function Signin() {
     }
   };
 
-  // Sign Up handler: Use localStorage values to initialize Firestore.
+  // Sign Up handler: Use localStorage defaults to initialize Firestore.
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");

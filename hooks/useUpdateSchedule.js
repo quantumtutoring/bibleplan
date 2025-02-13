@@ -67,8 +67,10 @@ export default function useUpdateSchedule({
     }
 
     // Default schedule branch.
+    // scheduleOrOt is a string representing OT chapters.
     const otNum = parseInt(scheduleOrOt, 10);
     const ntNum = parseInt(nt, 10);
+    // Validate that the parsed numbers are in the expected range.
     if (
       isNaN(otNum) ||
       otNum < 1 ||
@@ -82,11 +84,13 @@ export default function useUpdateSchedule({
       );
       return;
     }
+    // These numbers determine the schedule.
     const totalOT = 929;
     const totalNT = 260;
     const otDays = Math.ceil(totalOT / otNum);
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
+    // Check if nothing has changed.
     if (
       !forceUpdate &&
       oldSettingsRef.current.ot === otNum &&
@@ -114,8 +118,8 @@ export default function useUpdateSchedule({
     }
     const newSchedule = [];
     for (let day = 1; day <= totalDays; day++) {
-      const otText = (otSchedule[day - 1] || '') + '';
-      const ntText = (ntSchedule[day - 1] || '') + '';
+      const otText = String(otSchedule[day - 1] || '');
+      const ntText = String(ntSchedule[day - 1] || '');
       let url;
       if (currentVersion === 'lsb') {
         url = `https://read.lsbible.org/?q=${encodeURIComponent(otText)}, ${encodeURIComponent(ntText)}`;
@@ -135,8 +139,11 @@ export default function useUpdateSchedule({
     }
     setSchedule(newSchedule);
     if (currentUser) {
+      // Instead of storing numbers, we convert the validated numbers back to strings.
+      const otStr = String(otNum);
+      const ntStr = String(ntNum);
       const updateData = {
-        settings: { otChapters: otNum, ntChapters: ntNum },
+        settings: { otChapters: otStr, ntChapters: ntStr },
         isCustomSchedule: false,
       };
       if (clearProgress) {
