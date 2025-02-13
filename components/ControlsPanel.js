@@ -1,11 +1,12 @@
 // components/ControlsPanel.js
 import React, { useRef, useState } from 'react';
+import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 import useLocalStorage from '../hooks/useLocalStorage';
 
 const ControlsPanel = ({
-  version,               // e.g., 'nasb', 'lsb', or 'esv'
-  handleVersionChange,
+  version,               // The current version in local storage
+  setCurrentVersion,     // A setter for updating the version
   otChapters,
   setOtChapters,
   ntChapters,
@@ -16,6 +17,7 @@ const ControlsPanel = ({
   isCustomSchedule,
   setIsCustomSchedule
 }) => {
+  const router = useRouter();
   const { setItem } = useLocalStorage();
   // Local state for the custom plan text.
   const [customPlanText, setCustomPlanText] = useState('');
@@ -29,22 +31,38 @@ const ControlsPanel = ({
   };
 
   const toggleCustomizeMode = () => {
+    console.log('Current isCustomSchedule:', isCustomSchedule);
+  
     if (isCustomSchedule) {
-      // Exiting custom mode: regenerate default schedule.
+      console.log('Switching from CUSTOM -> DEFAULT');
+      // Exiting custom mode: regenerate default schedule
       updateSchedule(otChapters, ntChapters, false, true, false);
       setIsCustomSchedule(false);
+  
+      if (router.pathname !== '/') {
+        console.log('Routing to /');
+        router.push('/');
+      }
     } else {
-      // Entering custom mode: restore custom schedule if available.
+      console.log('Switching from DEFAULT -> CUSTOM');
+      // Entering custom mode
       if (customSchedule && customSchedule.length > 0) {
         updateSchedule(customSchedule, undefined, false, false, false);
       } else {
         updateSchedule([], undefined, false, false, false);
       }
       setIsCustomSchedule(true);
+  
+      // Make sure we actually route to /custom
+      if (router.pathname !== '/custom') {
+        console.log('Routing to /custom');
+        router.push('/custom');
+      }
     }
   };
-
-  // Helper function to format a Bible reference.
+  
+  
+  // Helper function to format a Bible reference string.
   const formatBibleReference = (str) => {
     if (!str) return "";
     let formatted = str.trim();
@@ -91,22 +109,34 @@ const ControlsPanel = ({
 
   return (
     <div>
+      {/* A dropdown for selecting the version, no routing needed here. */}
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <select value={version} onChange={handleVersionChange}>
+        <select
+          value={version}
+          onChange={(e) => {
+            setCurrentVersion(e.target.value);
+          }}
+        >
           <option value="nasb">NASB</option>
           <option value="lsb">LSB</option>
           <option value="esv">ESV</option>
         </select>
       </div>
+      
       <h1>Bible Reading Planner</h1>
       <div className={styles.controls}>
         {/* Planner mode selector */}
         <span>
-          <select className={styles.plannerSelector} onChange={toggleCustomizeMode} value={isCustomSchedule ? 'custom' : 'default'}>
+          <select
+            className={styles.plannerSelector}
+            onChange={toggleCustomizeMode}
+            value={isCustomSchedule ? 'custom' : 'default'}
+          >
             <option value="default">Default Planner</option>
             <option value="custom">Custom Planner</option>
           </select>
         </span>
+        
         {isCustomSchedule ? (
           <div>
             <textarea
@@ -140,6 +170,7 @@ const ControlsPanel = ({
             </label>
           </div>
         )}
+        
         <div>
           <button onClick={handleCreateSchedule}>
             Generate Schedule

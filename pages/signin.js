@@ -4,9 +4,8 @@
  *
  * This page handles user authentication. It uses the centralized ListenFireStore to check
  * if a user is already signed in. If a user with a verified email is found, it immediately
- * routes them to their saved Bible version page (fetched from Firestore or context).
- * Otherwise, it renders the sign‑in form with options for email/password, Google sign‑in,
- * and password reset.
+ * routes them to "/" (or wherever you want).
+ * Otherwise, it renders the sign-in form with email/password, Google sign-in, and password reset.
  */
 
 import { useEffect, useState } from "react";
@@ -16,60 +15,42 @@ import Link from "next/link";
 import { firebase, auth } from "../lib/firebase"; // Using compat Firebase
 import styles from "../styles/Signin.module.css";
 import { useListenFireStore } from "../contexts/ListenFireStore";
-// Import the unified Firestore write hook.
 import writeFireStore from "../hooks/writeFireStore";
 
 export default function Signin() {
-  // State variables for email, password, user feedback, and loading.
+  // State variables
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
   const [msgType, setMsgType] = useState(""); // "error" or "success"
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
 
-  // Consume the centralized user data.
+  const router = useRouter();
   const { currentUser, loading } = useListenFireStore();
-  // Get the unified update function from our hook.
   const { updateUserData } = writeFireStore();
 
   /**
-   * routeToVersion
-   *
-   * Routes the user based on their stored Bible version in localStorage.
+   * If user is already signed in and email is verified,
+   * send them straight to "/".
    */
-  const routeToVersion = async (uid) => {
-    console.log("[Signin] Routing user with uid:", uid);
-    const storedVersion = localStorage.getItem("version");
-    let route = "/";
-    if (storedVersion === "lsb") route = "/lsb";
-    else if (storedVersion === "esv") route = "/esv";
-    else if (storedVersion === "nasb") route = "/nasb";
-    console.log("[Signin] Routing user to:", route);
-    window.location.href = route;
-  };
-
-  // useEffect: Check authentication state.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
-      routeToVersion(currentUser.uid);
+      router.push("/");
     } else {
       setShouldRender(true);
     }
-  }, [loading, currentUser]);
+  }, [loading, currentUser, router]);
 
-  // Handler: Sign In with Email/Password.
+  // Sign In with Email/Password
   const handleSignIn = async (e) => {
     e.preventDefault();
-    setMessage(""); // Clear previous messages.
+    setMessage("");
     setIsLoading(true);
     try {
-      console.log("[Signin] Attempting sign in with email:", email);
       const userCredential = await auth.signInWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      console.log("[Signin] Sign in successful:", user);
       if (!user.emailVerified) {
         await user.sendEmailVerification();
         setMessage("Your email is not verified. A verification email has been sent.");
@@ -79,11 +60,10 @@ export default function Signin() {
         setMessage("Sign in successful!");
         setMsgType("success");
         setTimeout(() => {
-          routeToVersion(user.uid);
+          router.push("/");
         }, 0);
       }
     } catch (error) {
-      console.error("[Signin] Sign in error:", error);
       if (error.code === "auth/user-not-found") {
         setMessage("We couldn’t find an account with that email. Please check and try again.");
       } else if (error.code === "auth/wrong-password") {
@@ -94,23 +74,22 @@ export default function Signin() {
         setMessage("Error signing in: " + error.message);
       }
       setMsgType("error");
+      console.error("[Signin] Sign in error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handler: Sign Up (Email/Password) with default data population.
+  // Sign Up (Email/Password) with default data population
   const handleSignUp = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
     try {
-      console.log("[Signin] Creating new account for email:", email);
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      console.log("[Signin] Account created:", user);
 
-      // Retrieve default settings from localStorage or use defaults.
+      // Optionally read localStorage for default values
       const otChapters = localStorage.getItem("otChapters")
         ? Number(JSON.parse(localStorage.getItem("otChapters")))
         : 2;
@@ -118,22 +97,15 @@ export default function Signin() {
         ? Number(JSON.parse(localStorage.getItem("ntChapters")))
         : 1;
       const version = localStorage.getItem("version") || "nasb";
-
-      // Retrieve default progress map.
       const progressMap = localStorage.getItem("progressMap")
         ? JSON.parse(localStorage.getItem("progressMap"))
         : {};
-
-      // Retrieve custom progress map.
       const customProgressMap = localStorage.getItem("customProgressMap")
         ? JSON.parse(localStorage.getItem("customProgressMap"))
         : {};
-
-      // Retrieve custom schedule.
       const storedCustomSchedule = localStorage.getItem("customSchedule")
         ? JSON.parse(localStorage.getItem("customSchedule"))
         : null;
-      // Strip out URL fields from the custom schedule.
       const customScheduleToStore = storedCustomSchedule
         ? storedCustomSchedule.map(item => ({
             day: item.day,
@@ -141,9 +113,7 @@ export default function Signin() {
           }))
         : null;
 
-      console.log("[Signin] Populating Firestore with all local data for new user.");
-
-      // Update Firestore with settings, default progress, custom progress, custom schedule, and planner mode.
+      // Firestore initialization for the new user
       await updateUserData(user.uid, {
         settings: { otChapters, ntChapters, version },
         defaultProgress: progressMap,
@@ -152,11 +122,10 @@ export default function Signin() {
         isCustomSchedule: false
       });
 
-      // Send an email verification.
+      // Email verification
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please verify your email and then sign in.");
       setMsgType("success");
-      // Optionally, sign the user out immediately.
       await auth.signOut();
     } catch (error) {
       console.error("[Signin] Sign up error:", error);
@@ -175,32 +144,30 @@ export default function Signin() {
     }
   };
 
-  // Handler: Google Sign In.
+  // Google Sign In
   const handleGoogleSignIn = async (e) => {
     e.preventDefault();
     setMessage("");
     setIsLoading(true);
     const provider = new firebase.auth.GoogleAuthProvider();
     try {
-      console.log("[Signin] Attempting Google sign in.");
       const result = await auth.signInWithPopup(provider);
       const user = result.user;
-      console.log("[Signin] Google sign in successful:", user);
       setMessage("Google sign in successful!");
       setMsgType("success");
       setTimeout(() => {
-        routeToVersion(user.uid);
+        router.push("/");
       }, 0);
     } catch (error) {
-      console.error("[Signin] Google sign in error:", error);
       setMessage("Google sign in error: " + error.message);
       setMsgType("error");
+      console.error("[Signin] Google sign in error:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Handler: Password Reset.
+  // Password Reset
   const handleResetPassword = async (e) => {
     e.preventDefault();
     setMessage("");
@@ -210,7 +177,6 @@ export default function Signin() {
       return;
     }
     try {
-      console.log("[Signin] Sending password reset email to:", email);
       await auth.sendPasswordResetEmail(email);
       setMessage("Password reset email sent. Please check your inbox.");
       setMsgType("success");

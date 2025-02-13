@@ -14,62 +14,46 @@ import writeFireStore from '../hooks/writeFireStore';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useUpdateSchedule from '../hooks/useUpdateSchedule';
 
-export default function PlanComponent() {
+/**
+ * PlanComponent
+ *
+ * "Option A": If forcedMode is provided ("default" or "custom"), we apply that first,
+ * then restore local data conditionally, ensuring forced default doesn't get overwritten.
+ */
+export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem, removeItem, clear } = useLocalStorage();
   const router = useRouter();
 
-  // --- Mounted flag for client-only rendering ---
+  // Track if we've done client-side mount
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // --- Determine Bible version from URL ---
-  const pathname = router.pathname;
-  let version = 'nasb';
-  if (pathname === '/lsb') version = 'lsb';
-  else if (pathname === '/esv') version = 'esv';
+  // Auth/Firestore
+  const { currentUser, userData } = useListenFireStore();
+  const { updateUserData } = writeFireStore();
 
-  // Store the current version in state.
-  const [currentVersion, setCurrentVersion] = useState(version);
-  useEffect(() => {
-    setCurrentVersion(version);
-  }, [version]);
+  // Version from localStorage (fallback = "nasb")
+  const [currentVersion, setCurrentVersion] = useState(() => {
+    return getItem('version', 'nasb') || 'nasb';
+  });
 
-  // Save the current version to localStorage.
-  useEffect(() => {
-    setItem('version', currentVersion);
-  }, [currentVersion, setItem]);
-
-  // --- Lazy Initialization of OT/NT settings and custom schedule mode ---
+  // OT/NT from localStorage
   const [otChapters, setOtChapters] = useState(() => Number(getItem('otChapters', '2')));
   const [ntChapters, setNtChapters] = useState(() => Number(getItem('ntChapters', '1')));
+
+  // isCustomSchedule also from localStorage, but can be overridden by forcedMode
   const [isCustomSchedule, setIsCustomSchedule] = useState(() => getItem('isCustomSchedule', false));
 
-  // Save settings whenever they change.
-  useEffect(() => {
-    setItem('otChapters', String(otChapters));
-  }, [otChapters, setItem]);
-
-  useEffect(() => {
-    setItem('ntChapters', String(ntChapters));
-  }, [ntChapters, setItem]);
-
-  useEffect(() => {
-    setItem('isCustomSchedule', isCustomSchedule);
-  }, [isCustomSchedule, setItem]);
-
-  // --- Other state variables ---
+  // Schedules & progress
   const [schedule, setSchedule] = useState([]);
   const [defaultProgressMap, setDefaultProgressMap] = useState({});
   const [customProgressMap, setCustomProgressMap] = useState({});
   const [customSchedule, setCustomSchedule] = useState(null);
   const lastCheckedRef = useRef(null);
 
-  const { currentUser, userData } = useListenFireStore();
-  const { updateUserData } = writeFireStore();
-
-  // Extract the updateSchedule function from the custom hook.
+  // Our schedule update hook
   const updateSchedule = useUpdateSchedule({
     currentVersion,
     setSchedule,
@@ -82,14 +66,35 @@ export default function PlanComponent() {
     currentUser,
   });
 
-  // --- Restore stored values from localStorage on mount ---
+  /**
+   * On mount, we:
+   * 1) Force the mode (if forcedMode is given).
+   * 2) Restore localStorage data conditionally (avoid overwriting forced default with custom).
+   * 3) Generate schedule according to final isCustomSchedule (or forcedMode).
+   */
   useEffect(() => {
-    // OT, NT, and isCustomSchedule are already lazily initialized.
-    console.log('Restored OT:', otChapters, 'NT:', ntChapters, 'isCustomSchedule:', isCustomSchedule);
+    // 1) If forcedMode is "default" or "custom," override isCustomSchedule
+    if (forcedMode === 'default') {
+      console.log('[PlanComponent] Forcing Default Mode');
+      setIsCustomSchedule(false);
+      setItem('isCustomSchedule', false);
+      if (currentUser) {
+        updateUserData(currentUser.uid, { isCustomSchedule: false })
+          .catch(err => console.error('[PlanComponent] Forced default error:', err));
+      }
+    } else if (forcedMode === 'custom') {
+      console.log('[PlanComponent] Forcing Custom Mode');
+      setIsCustomSchedule(true);
+      setItem('isCustomSchedule', true);
+      if (currentUser) {
+        updateUserData(currentUser.uid, { isCustomSchedule: true })
+          .catch(err => console.error('[PlanComponent] Forced custom error:', err));
+      }
+    }
 
-    // Restore custom schedule and progress maps (if any).
+    // 2) Restore from localStorage, *unless* forcedMode == 'default' (where we skip custom)
     const storedCustomSchedule = getItem('customSchedule', null);
-    if (storedCustomSchedule) {
+    if (forcedMode !== 'default' && storedCustomSchedule) {
       console.log('[PlanComponent] Restoring custom schedule from localStorage.');
       setCustomSchedule(storedCustomSchedule);
     }
@@ -101,90 +106,129 @@ export default function PlanComponent() {
     if (storedCustomProgress) {
       setCustomProgressMap(storedCustomProgress);
     }
-    // On mount, update the schedule based on the current mode.
-    if (isCustomSchedule) {
+
+    // 3) Use updateSchedule based on the final mode
+    // If forcedMode is 'custom', definitely call custom.
+    // If forcedMode is 'default', call default schedule.
+    // Otherwise, fallback to whichever isCustomSchedule is in localStorage
+    if (forcedMode === 'custom') {
       updateSchedule(storedCustomSchedule || [], undefined, true);
-    } else {
+    } else if (forcedMode === 'default') {
       updateSchedule(otChapters, ntChapters, true);
+    } else {
+      // No forced mode, or forcedMode is undefined
+      if (isCustomSchedule) {
+        updateSchedule(storedCustomSchedule || [], undefined, true);
+      } else {
+        updateSchedule(otChapters, ntChapters, true);
+      }
     }
-  }, []); // Run once on mount
+  }, []); // single run on mount
 
-  // Note: The auto-update useEffect on OT/NT changes has been removed.
-  // The schedule now only updates when the "Generate" button (in ControlsPanel) is pressed.
-
-  // --- Update state from Firestore whenever userData changes ---
+  /**
+   * Keep track of local changes to version, otChapters, ntChapters, isCustomSchedule
+   * and store them in localStorage (and Firestore if needed).
+   */
   useEffect(() => {
-    if (userData) {
-      if (userData.settings) {
-        if (userData.settings.otChapters) {
-          const newOT = Number(userData.settings.otChapters);
-          console.log('[PlanComponent] Updating OT chapters from Firestore:', newOT);
-          setOtChapters(newOT);
-          setItem('otChapters', String(newOT));
-        }
-        if (userData.settings.ntChapters) {
-          const newNT = Number(userData.settings.ntChapters);
-          console.log('[PlanComponent] Updating NT chapters from Firestore:', newNT);
-          setNtChapters(newNT);
-          setItem('ntChapters', String(newNT));
-        }
+    setItem('version', currentVersion);
+    if (currentUser) {
+      updateUserData(currentUser.uid, {
+        settings: { version: currentVersion },
+      }).catch(error => console.error('[PlanComponent] Error updating version in Firestore:', error));
+    }
+  }, [currentVersion, currentUser, setItem, updateUserData]);
+
+  useEffect(() => {
+    setItem('otChapters', String(otChapters));
+  }, [otChapters, setItem]);
+
+  useEffect(() => {
+    setItem('ntChapters', String(ntChapters));
+  }, [ntChapters, setItem]);
+
+  // If forcedMode changes dynamically after mount, you might want to handle that too.
+  // Omitted here for simplicity.
+
+  // Also keep isCustomSchedule in localStorage
+  useEffect(() => {
+    setItem('isCustomSchedule', isCustomSchedule);
+  }, [isCustomSchedule, setItem]);
+
+  // If userData from Firestore changes, possibly merge it in
+  useEffect(() => {
+    if (!userData) return;
+    if (userData.settings) {
+      if (userData.settings.version && userData.settings.version !== currentVersion) {
+        setCurrentVersion(userData.settings.version);
       }
-      if (userData.defaultProgress) {
-        setDefaultProgressMap(userData.defaultProgress);
-        setItem('progressMap', userData.defaultProgress);
+      if (userData.settings.otChapters) {
+        const newOT = Number(userData.settings.otChapters);
+        setOtChapters(newOT);
+        setItem('otChapters', String(newOT));
       }
-      if (userData.customProgress) {
-        setCustomProgressMap(userData.customProgress);
-        setItem('customProgressMap', userData.customProgress);
-      }
-      if (userData.customSchedule) {
-        console.log('[PlanComponent] Restoring custom schedule from Firestore.');
-        setCustomSchedule(userData.customSchedule);
-      }
-      if (typeof userData.isCustomSchedule === 'boolean') {
-        setIsCustomSchedule(userData.isCustomSchedule);
+      if (userData.settings.ntChapters) {
+        const newNT = Number(userData.settings.ntChapters);
+        setNtChapters(newNT);
+        setItem('ntChapters', String(newNT));
       }
     }
-  }, [userData, setItem]);
+    if (userData.defaultProgress) {
+      setDefaultProgressMap(userData.defaultProgress);
+      setItem('progressMap', userData.defaultProgress);
+    }
+    if (userData.customProgress) {
+      setCustomProgressMap(userData.customProgress);
+      setItem('customProgressMap', userData.customProgress);
+    }
+    if (userData.customSchedule) {
+      console.log('[PlanComponent] Restoring custom schedule from Firestore.');
+      setCustomSchedule(userData.customSchedule);
+    }
+    if (typeof userData.isCustomSchedule === 'boolean') {
+      setIsCustomSchedule(userData.isCustomSchedule);
+    }
+  }, [userData, currentVersion, setItem]);
 
+  // Identify which schedule & progress to show
   const activeProgressMap = isCustomSchedule ? customProgressMap : defaultProgressMap;
   const activeSchedule = isCustomSchedule ? customSchedule : schedule;
 
-  // Recalculate schedule links whenever currentVersion, activeSchedule, or isCustomSchedule changes.
+  // Recalculate schedule links whenever version/schedule/mode changes
   useEffect(() => {
-    if (activeSchedule && activeSchedule.length > 0) {
-      const updatedSchedule = activeSchedule.map(item => {
-        let newUrl;
-        if (currentVersion === 'lsb') {
-          newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(item.passages)}`;
-        } else if (currentVersion === 'esv') {
-          newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(item.passages)}`;
-        } else {
-          newUrl = `https://www.literalword.com/?q=${encodeURIComponent(item.passages)}`;
-        }
-        return { ...item, url: newUrl };
-      });
-      let hasChanged = false;
-      for (let i = 0; i < activeSchedule.length; i++) {
-        if (activeSchedule[i].url !== updatedSchedule[i].url) {
-          hasChanged = true;
-          break;
-        }
+    if (!activeSchedule || activeSchedule.length === 0) return;
+    const updatedSchedule = activeSchedule.map(item => {
+      let newUrl;
+      if (currentVersion === 'lsb') {
+        newUrl = `https://read.lsbible.org/?q=${encodeURIComponent(item.passages)}`;
+      } else if (currentVersion === 'esv') {
+        newUrl = `https://esv.literalword.com/?q=${encodeURIComponent(item.passages)}`;
+      } else {
+        newUrl = `https://www.literalword.com/?q=${encodeURIComponent(item.passages)}`;
       }
-      if (hasChanged) {
-        if (isCustomSchedule) {
-          setCustomSchedule(updatedSchedule);
-        } else {
-          setSchedule(updatedSchedule);
-        }
+      return { ...item, url: newUrl };
+    });
+
+    let hasChanged = false;
+    for (let i = 0; i < activeSchedule.length; i++) {
+      if (activeSchedule[i].url !== updatedSchedule[i].url) {
+        hasChanged = true;
+        break;
+      }
+    }
+    if (hasChanged) {
+      if (isCustomSchedule) {
+        setCustomSchedule(updatedSchedule);
+      } else {
+        setSchedule(updatedSchedule);
       }
     }
   }, [currentVersion, activeSchedule, isCustomSchedule]);
 
+  // Checkbox changes for progress
   const handleCheckboxChange = (day, checked, event) => {
-    console.log(`[PlanComponent] Checkbox changed for day ${day} to ${checked}`);
-    let newProg;
     const currentProgress = isCustomSchedule ? customProgressMap : defaultProgressMap;
+    let newProg;
+
     if (event.shiftKey && lastCheckedRef.current !== null) {
       const start = Math.min(lastCheckedRef.current, day);
       const end = Math.max(lastCheckedRef.current, day);
@@ -197,6 +241,7 @@ export default function PlanComponent() {
       newProg = { ...currentProgress, [day]: checked };
       setItem('check-day-' + day, checked ? 'true' : 'false');
     }
+
     if (isCustomSchedule) {
       setCustomProgressMap(newProg);
       setItem('customProgressMap', newProg);
@@ -211,6 +256,7 @@ export default function PlanComponent() {
     lastCheckedRef.current = day;
   };
 
+  // Keep the currentUser in a ref for debounced writes
   const currentUserRef = useRef(currentUser);
   useEffect(() => {
     currentUserRef.current = currentUser;
@@ -218,37 +264,38 @@ export default function PlanComponent() {
 
   const [syncPending, setSyncPending] = useState(false);
   const debouncedSaveRef = useRef(null);
+
+  // Debounce for progress
   useEffect(() => {
     debouncedSaveRef.current = debounce(newProg => {
       if (currentUserRef.current) {
-        console.log('[PlanComponent] Debounced function triggered. Writing progress:', newProg);
+        console.log('[PlanComponent] Debounced progress sync:', newProg);
         const updateField = isCustomSchedule
           ? { customProgress: newProg }
           : { defaultProgress: newProg };
         updateUserData(currentUserRef.current.uid, updateField)
           .then(() => {
-            console.log('[PlanComponent] Progress write successful');
             setSyncPending(false);
           })
-          .catch(error =>
-            console.error('[PlanComponent] Error saving progress:', error)
-          );
+          .catch(error => console.error('[PlanComponent] Error saving progress:', error));
       }
     }, 1000);
+
     return () => {
       debouncedSaveRef.current.cancel();
     };
   }, [isCustomSchedule, updateUserData]);
 
+  // Export to Excel
   const handleExportExcel = () => {
     exportScheduleToExcel(activeSchedule, activeProgressMap);
   };
 
+  // Sign out
   const signOut = async () => {
     try {
-      console.log('[PlanComponent] Signing out user');
       await auth.signOut();
-      clear();
+      clear(); 
       setItem('otChapters', '2');
       setItem('ntChapters', '1');
       setItem('progressMap', {});
@@ -261,8 +308,7 @@ export default function PlanComponent() {
     }
   };
 
-  // Render only after mounted.
-  if (!mounted) return null;
+  if (!mounted) return null; // SSR guard
 
   return (
     <div className={styles.pageBackground}>
@@ -270,6 +316,7 @@ export default function PlanComponent() {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
+
       <Header
         currentUser={currentUser}
         syncPending={syncPending}
@@ -279,16 +326,12 @@ export default function PlanComponent() {
       <div className={styles.container} id="main-content">
         <ControlsPanel
           version={currentVersion}
-          handleVersionChange={(e) => {
-            const newVal = e.target.value;
-            console.log('[PlanComponent] Changing version to:', newVal);
-            router.push(`/${newVal}`);
-          }}
+          setCurrentVersion={setCurrentVersion}
           otChapters={otChapters}
           setOtChapters={setOtChapters}
           ntChapters={ntChapters}
           setNtChapters={setNtChapters}
-          updateSchedule={updateSchedule} // Triggered when the Generate button is pressed.
+          updateSchedule={updateSchedule}
           exportToExcel={handleExportExcel}
           customSchedule={customSchedule}
           isCustomSchedule={isCustomSchedule}
