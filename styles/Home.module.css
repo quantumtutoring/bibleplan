@@ -126,6 +126,12 @@
 /*  text-transform: capitalize; */
 }
 
+.scheduleTable th:first-child, /* Make day column narrow */
+.scheduleTable td:first-child {
+  width: 50px;          /* Adjust width as needed */
+  white-space: nowrap;  /* Prevent wrapping */
+}
+
 .scheduleTable th,
 .scheduleTable td {
   padding: 6px 8px;
@@ -133,6 +139,8 @@
   border-bottom: 1px solid #ddd;
   font-size: 12px;
 }
+
+
 
 .scheduleTable th {
   background: var(--theme-color);
