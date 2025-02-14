@@ -14,33 +14,32 @@ const ControlsPanel = ({
   updateSchedule,
   exportToExcel,
   customSchedule,
+  defaultSchedule, // Provided from the parent component.
   isCustomSchedule,
-  handleModeChange
+  handleModeChange,
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
-  // Adjust the textarea height based on content.
+  // Adjust the textarea height based on its content.
   const handleTextareaInput = useCallback((e) => {
     e.target.style.height = 'auto';
     e.target.style.height = `${e.target.scrollHeight}px`;
     setCustomPlanText(e.target.value);
   }, []);
 
-  // Toggle mode between default and custom.
+  // Toggle between default and custom planner modes.
   const toggleCustomizeMode = useCallback(() => {
     if (isCustomSchedule) {
-      // Switching from CUSTOM -> DEFAULT
       console.log('Switching from CUSTOM -> DEFAULT');
-      handleModeChange(false); // Only update local state.
+      handleModeChange(false);
       if (router.pathname !== '/') {
         router.push('/');
       }
     } else {
-      // Switching from DEFAULT -> CUSTOM
       console.log('Switching from DEFAULT -> CUSTOM');
-      handleModeChange(true); // Only update local state.
+      handleModeChange(true);
       if (router.pathname !== '/custom') {
         router.push('/custom');
       }
@@ -52,63 +51,16 @@ const ControlsPanel = ({
     handleVersionChange(e.target.value);
   }, [handleVersionChange]);
 
-  // Helper function to format Bible reference strings.
-  const formatBibleReference = (str) => {
-    if (!str) return "";
-    let formatted = str.trim();
-    formatted = formatted.replace(/([,;])(?!\s)/g, "$1 ");
-    formatted = formatted.replace(/([A-Za-z]+)(\d+)/g, "$1 $2");
-    formatted = formatted.replace(/(\d+)([A-Za-z]+)/g, "$1 $2");
-    return formatted
-      .split(/\s+/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-      .join(" ");
-  };
-
-  // When "Generate Schedule" is pressed, we generate the schedule.
+  // When "Generate Schedule" is pressed, simply delegate to updateSchedule.
   const handleCreateSchedule = useCallback(() => {
     if (isCustomSchedule) {
-      // Process custom plan text.
-      const lines = customPlanText
-        .split('\n')
-        .map(line => line.trim())
-        .filter(line => line !== '');
-      
-      if (lines.length < 1 || lines.length > 2000) {
-        alert('Please enter between 1 and 2000 lines for your custom plan.');
-        return;
-      }
-      
-      const customScheduleArr = lines.map((line, index) => {
-        const formattedLine = formatBibleReference(line);
-        let url;
-        if (version === 'lsb') {
-          url = `https://read.lsbible.org/?q=${encodeURIComponent(formattedLine)}`;
-        } else if (version === 'esv') {
-          url = `https://esv.literalword.com/?q=${encodeURIComponent(formattedLine)}`;
-        } else {
-          url = `https://www.literalword.com/?q=${encodeURIComponent(formattedLine)}`;
-        }
-        return { day: index + 1, passages: formattedLine, url };
-      });
-      // Call updateSchedule here to generate and write the custom schedule with progress cleared.
-      updateSchedule(customScheduleArr, undefined, false, false, true);
+      // In custom mode, pass the full text along with a flag.
+      updateSchedule(customPlanText, undefined, false, false, true, true);
     } else {
-      // For default mode, validate OT/NT.
-      const otNumber = parseInt(otChapters, 10);
-      const ntNumber = parseInt(ntChapters, 10);
-      if (isNaN(otNumber) || otNumber < 1 || otNumber > 2000) {
-        alert("OT chapters must be a number between 1 and 2000");
-        return;
-      }
-      if (isNaN(ntNumber) || ntNumber < 1 || ntNumber > 2000) {
-        alert("NT chapters must be a number between 1 and 2000");
-        return;
-      }
-      // Call updateSchedule to generate the default schedule with progress cleared.
-      updateSchedule(otChapters, ntChapters, false, false, true);
+      // In default mode, pass OT and NT chapter inputs.
+      updateSchedule(otChapters, ntChapters, false, false, true, false);
     }
-  }, [isCustomSchedule, customPlanText, version, otChapters, ntChapters, updateSchedule]);
+  }, [isCustomSchedule, customPlanText, otChapters, ntChapters, updateSchedule]);
 
   return (
     <div>
@@ -120,7 +72,7 @@ const ControlsPanel = ({
           <option value="esv">ESV</option>
         </select>
       </div>
-      
+
       <h1>Bible Reading Planner</h1>
       <div className={styles.controls}>
         {/* Planner mode selector */}
@@ -134,7 +86,7 @@ const ControlsPanel = ({
             <option value="custom">Custom Planner</option>
           </select>
         </span>
-        
+
         {isCustomSchedule ? (
           <div>
             <textarea
@@ -148,7 +100,7 @@ const ControlsPanel = ({
         ) : (
           <div className={styles.setChapters}>
             <label>
-              OT chapters/day (929 total):
+              OT chapters/day (e.g., 2):
               <input
                 type="number"
                 step="1"
@@ -158,7 +110,7 @@ const ControlsPanel = ({
             </label>
             <br />
             <label>
-              NT chapters/day (260 total):
+              NT chapters/day (e.g., 1):
               <input
                 type="number"
                 step="1"
@@ -168,14 +120,10 @@ const ControlsPanel = ({
             </label>
           </div>
         )}
-        
+
         <div>
-          <button onClick={handleCreateSchedule}>
-            Generate Schedule
-          </button>
-          <button onClick={exportToExcel}>
-            Export to Excel
-          </button>
+          <button onClick={handleCreateSchedule}>Generate Schedule</button>
+          <button onClick={exportToExcel}>Export to Excel</button>
         </div>
       </div>
     </div>
