@@ -1,8 +1,10 @@
-// contexts/ListenFireStore.js
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { auth, db } from '../lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, onSnapshot } from 'firebase/firestore';
+
+// Module-level counter for reads.
+let readCount = 0;
 
 const ListenFireStore = createContext({
   currentUser: null,
@@ -16,9 +18,7 @@ export function UserDataProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Initialize with a no-op unsubscribe function.
     let unsubscribeSnapshot = () => {};
-
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
 
@@ -27,23 +27,25 @@ export function UserDataProvider({ children }) {
         unsubscribeSnapshot = onSnapshot(
           userDocRef,
           (docSnap) => {
+            readCount++;
+            const timeStamp = new Date().toISOString();
+            console.log(`[${timeStamp}] Read #${readCount}: Received snapshot for user ${user.uid}`, docSnap.data());
             setUserData(docSnap.exists() ? docSnap.data() : null);
             setLoading(false);
+            console.log(`[${timeStamp}] Running total reads: ${readCount}`);
           },
           (error) => {
-            console.error("[ListenFireStore] Error listening to user document:", error);
+            console.error(`[${new Date().toISOString()}] Error listening to user document:`, error);
             setLoading(false);
           }
         );
       } else {
-        // Unsubscribe the snapshot listener when there is no user.
         unsubscribeSnapshot();
         setUserData(null);
         setLoading(false);
       }
     });
 
-    // Cleanup both the snapshot listener and the auth listener on unmount.
     return () => {
       unsubscribeSnapshot();
       unsubscribeAuth();
@@ -65,3 +67,5 @@ export function UserDataProvider({ children }) {
 export function useListenFireStore() {
   return useContext(ListenFireStore);
 }
+
+export { readCount };
