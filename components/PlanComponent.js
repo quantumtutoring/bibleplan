@@ -94,8 +94,16 @@ export default function PlanComponent({ forcedMode }) {
       setIsCustomSchedule(false);
       setItem('isCustomSchedule', false);
     }
-    // Removed calls to updateSchedule that would trigger Firestore writes.
+    // We removed calls to updateSchedule here to avoid unwanted Firestore writes.
   }, []); // Run once on mount.
+
+  // --- NEW EFFECT: If in default mode and no schedule is loaded, generate the default schedule locally ---
+  useEffect(() => {
+    if (!isCustomSchedule && schedule.length === 0) {
+      // fromInit = true to indicate initial generation; forceUpdate and clearProgress are false.
+      updateSchedule(otChapters, ntChapters, true, false, false);
+    }
+  }, [isCustomSchedule, schedule, otChapters, ntChapters, updateSchedule]);
 
   // --- Write settings to localStorage if signed out ---
   useEffect(() => { if (!currentUser) setItem('version', currentVersion); }, [currentVersion, currentUser, setItem]);
@@ -254,7 +262,7 @@ export default function PlanComponent({ forcedMode }) {
   // --- Routing useEffect remains as needed ---
   useEffect(() => {
     if (!mounted) return;
-    // Optionally, you can use URL as the source of truth for UI mode.
+    // Use URL as source-of-truth for UI mode.
     if (router.pathname === '/custom' && !isCustomSchedule) {
       setIsCustomSchedule(true);
       setItem('isCustomSchedule', true);
