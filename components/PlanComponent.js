@@ -24,20 +24,21 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
+
+
+
   // --- State for settings ---
   // Initialize version and chapters from localStorage.
   const [currentVersion, setCurrentVersion] = useState(() => getItem('version', 'nasb'));
   const [otChapters, setOtChapters] = useState(() => {
     // If userData is already available and contains otChapters, use it; otherwise, fall back to localStorage.
     return currentUser && userData && userData.otChapters
-      ? userData.otChapters
-      : getItem('otChapters', '2');
+      ? userData.otChapters : getItem('otChapters', '2');
   });
   
   const [ntChapters, setNtChapters] = useState(() => {
     return currentUser && userData && userData.ntChapters
-      ? userData.ntChapters
-      : getItem('ntChapters', '1');
+      ? userData.ntChapters : getItem('ntChapters', '1');
   });
   // Determine mode from forcedMode prop, localStorage, or default.
   const [isCustomSchedule, setIsCustomSchedule] = useState(() => {
@@ -71,7 +72,7 @@ export default function PlanComponent({ forcedMode }) {
     setItem("isCustomSchedule", false);
   };
   
-
+ 
   // --- Routing: update mode based on URL ---
   useEffect(() => {
     if (router.pathname === '/custom' && !isCustomSchedule) {
@@ -105,6 +106,7 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, []); //don't do it continuously
 
+
   // -- keep chapters/day updated from firestore
   useEffect(() => {
     if (currentUser && userData) {
@@ -118,6 +120,17 @@ export default function PlanComponent({ forcedMode }) {
       }
     }
   }, [currentUser, userData, setItem]);
+
+  // -- update localstorage with them
+
+  useEffect(() => {
+    setItem('otChapters', otChapters);
+  }, [otChapters, setItem]);
+  
+  useEffect(() => {
+    setItem('ntChapters', ntChapters);
+  }, [ntChapters, setItem]);
+  
 
   // --- Export handler (passed to ControlsPanel if needed) ---
   const handleExportExcel = (schedule, progressMap) => {
