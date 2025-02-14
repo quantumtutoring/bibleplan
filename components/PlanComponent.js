@@ -13,6 +13,8 @@ import { exportScheduleToExcel } from '../utils/exportExcel';
 import writeFireStore from '../hooks/writeFireStore';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useUpdateSchedule from '../hooks/useUpdateSchedule';
+import { generateScheduleFromFirestore } from '../utils/generateScheduleFromFirestore';
+
 
 export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem, clear } = useLocalStorage();
@@ -97,14 +99,36 @@ export default function PlanComponent({ forcedMode }) {
     // We removed calls to updateSchedule here to avoid unwanted Firestore writes.
   }, []); // Run once on mount.
 
+
+
+
   // --- NEW EFFECT: If in default mode and no schedule is loaded, generate the default schedule locally ---
-  useEffect(() => {
-    if (!isCustomSchedule && schedule.length === 0) {
+
+    
+// Inside a useEffect or event handler:
+useEffect(() => {
+
+    if (currentUser && userData && userData.settings) {
+        const { otChapters, ntChapters, defaultProgress, version } = userData.settings;
+        try {
+          const { schedule, progressMap } = generateScheduleFromFirestore(otChapters, ntChapters, defaultProgress, version);
+          setSchedule(schedule);
+          setDefaultProgressMap(progressMap);
+        } catch (error) {
+          console.error("Error generating schedule:", error);
+        }
+      }
+
+    if (!currentUser && !isCustomSchedule && schedule.length === 0) {
       // fromInit = true; we do NOT clear progress on initial load.
       updateSchedule(otChapters, ntChapters, true, false, false);
     }
-  }, [isCustomSchedule, schedule, otChapters, ntChapters, updateSchedule]);
+  }, [isCustomSchedule, otChapters, ntChapters]);
 
+
+
+
+  
   // --- Write settings to localStorage if signed out ---
   useEffect(() => { if (!currentUser) setItem('version', currentVersion); }, [currentVersion, currentUser, setItem]);
   useEffect(() => { if (!currentUser) setItem('otChapters', otChapters); }, [otChapters, currentUser, setItem]);
@@ -145,7 +169,7 @@ export default function PlanComponent({ forcedMode }) {
   useEffect(() => {
     if (currentUser && userData) {
       if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
-        setDefaultProgressMap(userData.defaultProgress);
+        setDefaultProgressMap(userData.defaultProgress);//Not stored in FS
       }
       if (userData.customProgress && !isEqual(userData.customProgress, customProgressMap)) {
         setCustomProgressMap(userData.customProgress);
