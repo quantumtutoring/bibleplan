@@ -10,21 +10,24 @@ export default function useSignOut({ currentUser, version, isCustomSchedule, res
   const signOut = async () => {
     try {
       if (currentUser) {
+        const safeVersion = typeof version === 'undefined' ? 'nasb' : version;
+        const safeIsCustomSchedule = typeof isCustomSchedule === 'undefined' ? false : isCustomSchedule;
+
+        // Update only version and isCustomSchedule in Firestore.
         await updateUserData(currentUser.uid, {
-           version, isCustomSchedule
+          version: safeVersion,
+          isCustomSchedule: safeIsCustomSchedule
         });
       }
       await auth.signOut();
 
-      // If you still store some app data in localStorage that you want cleared:
+      // Clear localStorage completely (clears local UI progress, etc.)
       localStorage.clear();
 
       // Reset local state if needed.
       if (resetState && typeof resetState === 'function') {
         resetState();
       }
-
-
 
       // Navigate to home and force a full reload.
       await router.replace('/');

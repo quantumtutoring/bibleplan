@@ -2,14 +2,8 @@
 import { useRef } from 'react';
 import { OT_BOOKS, NT_BOOKS } from '../data/bibleBooks';
 import { generateSchedule } from '../utils/generateSchedule';
-
-// Reuse the same buildUrl function.
-const buildUrl = (passages, currentVersion) => {
-  const encoded = encodeURIComponent(passages);
-  if (currentVersion === 'lsb') return `https://read.lsbible.org/?q=${encoded}`;
-  if (currentVersion === 'esv') return `https://esv.literalword.com/?q=${encoded}`;
-  return `https://www.literalword.com/?q=${encoded}`;
-};
+import { generateScheduleFromFirestore } from '../utils/generateScheduleFromFirestore';
+import isEqual from 'lodash.isequal';
 
 export default function useUpdateDefaultSchedule({
   currentVersion,
@@ -21,73 +15,81 @@ export default function useUpdateDefaultSchedule({
 }) {
   const oldSettingsRef = useRef({ ot: null, nt: null, total: null });
 
-  const updateDefaultSchedule = (otChapters, ntChapters, fromInit = false, forceUpdate = false, clearProgress = false) => {
+  const updateDefaultSchedule = (
+    otChapters,
+    ntChapters,
+    fromInit = false,
+    forceUpdate = false,
+    clearProgress = false
+  ) => {
     const otNum = parseInt(otChapters, 10);
     const ntNum = parseInt(ntChapters, 10);
-    
-    if (
-      isNaN(otNum) || otNum < 1 || otNum > 100 ||
-      isNaN(ntNum) || ntNum < 1 || ntNum > 100
-    ) {
-      alert('Please enter a valid number between 1 and 100 for both OT and NT chapters per day.');
-      return;
-    }
-    
     const totalOT = 929;
     const totalNT = 260;
     const otDays = Math.ceil(totalOT / otNum);
     const ntDays = Math.ceil(totalNT / ntNum);
     const totalDays = Math.max(otDays, ntDays);
 
-    // Skip update if settings haven't changed.
+    // Skip update if settings haven't changed (unless forced).
     if (
       !forceUpdate &&
       oldSettingsRef.current.ot === otNum &&
       oldSettingsRef.current.nt === ntNum &&
       oldSettingsRef.current.total === totalDays
     ) {
-      console.log('[useUpdateDefaultSchedule] Default settings unchanged; schedule remains the same.');
+      console.log('[useUpdateDefaultSchedule] Settings unchanged; skipping update.');
       return;
     }
     oldSettingsRef.current = { ot: otNum, nt: ntNum, total: totalDays };
 
-    let otSchedule = [];
-    let ntSchedule = [];
-    try {
-      otSchedule = generateSchedule(OT_BOOKS, otNum, totalDays, otDays < totalDays);
-      ntSchedule = generateSchedule(NT_BOOKS, ntNum, totalDays, ntDays < totalDays);
-    } catch (error) {
-      console.error('Error generating schedule:', error);
-    }
-    
-    const newSchedule = [];
-    for (let day = 1; day <= totalDays; day++) {
-      const otText = otSchedule[day - 1] || '';
-      const ntText = ntSchedule[day - 1] || '';
-      const linkText = `${otText}, ${ntText}`;
-      newSchedule.push({ 
-        day, 
-        passages: linkText, 
-        url: buildUrl(linkText, currentVersion) 
-      });
-    }
-    
-    setItem('isCustomSchedule', false);
+    // IMPORTANT: Instead of always using an empty default progress,
+    // if you want to preserve Firestore's existing progress on sign-in,
+    // you should pass in the Firestore value. Here, for simplicity, we assume
+    // that when updateDefaultSchedule is called for generation (by the user)
+    // you'll pass clearProgress = true; otherwise, for sign-in, you call this
+    // function differently.
+    const localDefaultProgress = clearProgress ? {} : {};
+    const { schedule, progressMap } = generateScheduleFromFirestore(
+      otChapters,
+      ntChapters,
+      localDefaultProgress,
+      currentVersion
+    );
+
+    // Update local state.
+    setSchedule(schedule);
+
+    // Build the update object for Firestore.
+    const updateData = {
+      otChapters: String(otNum),
+      ntChapters: String(ntNum),
+      version: currentVersion,
+      isCustomSchedule: false,
+    };
+
+    // Conditionally include defaultProgress:
     if (clearProgress) {
+      // If explicitly clearing, include an empty object.
+      updateData.defaultProgress = {};
       setDefaultProgressMap({});
       setItem('progressMap', {});
+    } else if (progressMap && Object.keys(progressMap).length > 0) {
+      // If progressMap is non-empty, then update local state.
+      setDefaultProgressMap(progressMap);
+      setItem('progressMap', progressMap);
+      // Do NOT update Firestore if progressMap is empty.
+      // (For sign-in, you want to preserve Firestore's data.)
+      if (!isEqual(progressMap, {})) {
+        updateData.defaultProgress = progressMap;
+      }
     }
-    setSchedule(newSchedule);
-    
+    // Only update Firestore if a user is signed in.
     if (currentUser) {
-      const updateData = {
-        settings: { otChapters: String(otNum), ntChapters: String(ntNum) },
-        isCustomSchedule: false,
-      };
-      if (clearProgress) updateData.defaultProgress = {};
       updateUserData(currentUser.uid, updateData)
-        .then(() => console.log('[useUpdateDefaultSchedule] Default settings saved to Firestore'))
-        .catch(error => console.error('[useUpdateDefaultSchedule] Error saving default settings:', error));
+        .then(() => console.log('[useUpdateDefaultSchedule] Updated Firestore.'))
+        .catch((error) =>
+          console.error('[useUpdateDefaultSchedule] Error updating Firestore:', error)
+        );
     }
   };
 

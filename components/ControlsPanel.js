@@ -1,5 +1,5 @@
 // components/ControlsPanel.js
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
@@ -11,22 +11,25 @@ const ControlsPanel = ({
   setOtChapters,
   ntChapters,
   setNtChapters,
-  updateDefaultSchedule,
-  updateCustomSchedule,
-  exportToExcel,
-  customSchedule,
   isCustomSchedule,
+  updateUserData, // not used here but passed in case needed later
+  customPlanText,
+  setCustomPlanText,
+  onGenerate,
+  exportToExcel,
 }) => {
   const router = useRouter();
-  const [customPlanText, setCustomPlanText] = useState('');
   const textareaRef = useRef(null);
 
   // Adjust the textarea height based on its content.
-  const handleTextareaInput = useCallback((e) => {
-    e.target.style.height = 'auto';
-    e.target.style.height = `${e.target.scrollHeight}px`;
-    setCustomPlanText(e.target.value);
-  }, []);
+  const handleTextareaInput = useCallback(
+    (e) => {
+      e.target.style.height = 'auto';
+      e.target.style.height = `${e.target.scrollHeight}px`;
+      setCustomPlanText(e.target.value);
+    },
+    [setCustomPlanText]
+  );
 
   // Toggle between default and custom modes.
   const toggleCustomizeMode = useCallback(() => {
@@ -44,18 +47,17 @@ const ControlsPanel = ({
   }, [isCustomSchedule, router]);
 
   // Handle version dropdown changes.
-  const handleVersionChangeInternal = useCallback((e) => {
-    handleVersionChange(e.target.value);
-  }, [handleVersionChange]);
+  const handleVersionChangeInternal = useCallback(
+    (e) => {
+      handleVersionChange(e.target.value);
+    },
+    [handleVersionChange]
+  );
 
-  // When "Generate Schedule" is pressed, delegate to the appropriate hook.
+  // When "Generate Schedule" is pressed, call the onGenerate callback.
   const handleCreateSchedule = useCallback(() => {
-    if (isCustomSchedule) {
-      updateCustomSchedule(customPlanText, false, false);
-    } else {
-      updateDefaultSchedule(otChapters, ntChapters, false, false, true);
-    }
-  }, [isCustomSchedule, customPlanText, otChapters, ntChapters, updateCustomSchedule, updateDefaultSchedule]);
+    onGenerate();
+  }, [onGenerate]);
 
   return (
     <div>

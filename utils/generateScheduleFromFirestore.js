@@ -11,6 +11,9 @@ import { generateSchedule } from './generateSchedule';
  * @returns {object} An object containing the generated `schedule` and `progressMap`.
  */
 export function generateScheduleFromFirestore(otChapters, ntChapters, defaultProgress, version) {
+  // Ensure defaultProgress is an object.
+  defaultProgress = defaultProgress || {};
+
   // Convert OT and NT chapters to numbers.
   const otNum = parseInt(otChapters, 10);
   const ntNum = parseInt(ntChapters, 10);
@@ -57,10 +60,11 @@ export function generateScheduleFromFirestore(otChapters, ntChapters, defaultPro
   }
 
   // Ensure progressMap includes every day from the generated schedule.
+  // For any missing day, default it to false.
   const progressMap = { ...defaultProgress };
   for (let day = 1; day <= totalDays; day++) {
     if (!(day in progressMap)) {
-      //progressMap[day] = false;
+      progressMap[day] = false;
     }
   }
 

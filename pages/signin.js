@@ -1,12 +1,4 @@
-/**
- * Signin.js - Handles user authentication.
- *
- * When a new user signs up, localStorage (via useLocalStorage) is used to obtain settings
- * (version, isCustomSchedule, OT/NT as strings, progress maps, custom schedule) to initialize
- * the new user's Firestore document.
- * When a returning user signs in, Firestore is used for routing.
- */
-
+// components/Signin.js
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
@@ -33,7 +25,7 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Read default settings from localStorage. Note OT/NT are strings.
+  // Read default settings from localStorage.
   const defaultVersion = getItem("version", "nasb");
   const defaultIsCustom = getItem("isCustomSchedule", false);
   const defaultOT = getItem("otChapters", "2");
@@ -116,12 +108,11 @@ export default function Signin() {
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
+      // Save as top-level fields (not nested under settings)
       await updateUserData(user.uid, {
-        settings: {
-          otChapters: defaultOT,
-          ntChapters: defaultNT,
-          version: defaultVersion
-        },
+        version: defaultVersion,
+        otChapters: defaultOT,
+        ntChapters: defaultNT,
         defaultProgress: defaultProgressMap,
         customProgress: defaultCustomProgressMap,
         customSchedule: defaultCustomSchedule,
