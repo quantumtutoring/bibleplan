@@ -11,7 +11,7 @@ export default function useSignOut({ currentUser, version, isCustomSchedule, res
     try {
       if (currentUser) {
         await updateUserData(currentUser.uid, {
-          settings: { version, isCustomSchedule },
+           version, isCustomSchedule
         });
       }
       await auth.signOut();
