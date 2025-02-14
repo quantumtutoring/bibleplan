@@ -1,37 +1,9 @@
-import { useRouter } from 'next/router';
 import Link from 'next/link';
 import styles from '../styles/Home.module.css';
-import { auth } from '../lib/firebase';
-import writeFireStore from '../hooks/writeFireStore';
+import useSignOut from '../hooks/useSignOut';
 
 export default function Header({ currentUser, syncPending, exportToExcel, version, isCustomSchedule, resetState }) {
-  const router = useRouter();
-  const { updateUserData } = writeFireStore();
-
-  const handleSignOut = async () => {
-    try {
-      // Update Firestore with the current settings ONLY on sign-out.
-      if (currentUser) {
-        await updateUserData(currentUser.uid, {
-          settings: { version, isCustomSchedule }
-        });
-      }
-      await auth.signOut();
-      
-      // Clear all user-specific localStorage.
-      localStorage.clear();
-
-      // Reset the local state in PlanComponent.
-      if (resetState) {
-        resetState();
-      }
-      
-      await router.push('/');
-      router.reload();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
-  };
+  const signOut = useSignOut({ currentUser, version, isCustomSchedule, resetState });
 
   return (
     <div className={styles.header} id="auth-header">
@@ -41,7 +13,7 @@ export default function Header({ currentUser, syncPending, exportToExcel, versio
             {currentUser.email}
           </span>
           <button
-            onClick={handleSignOut}
+            onClick={signOut}
             className={`${styles.button} ${styles.signoutButton}`}
           >
             Sign Out
