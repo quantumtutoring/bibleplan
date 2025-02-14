@@ -19,7 +19,6 @@ import React, {
         currentVersion, 
         updateUserData, 
         customPlanText 
-        // generateTrigger is no longer needed
       },
       ref
     ) => {
@@ -51,21 +50,15 @@ import React, {
         }
       }, [currentUser, userData]);
   
-      // When there's no currentUser, clear the custom progress map.
-      useEffect(() => {
-        if (!currentUser) {
-          setCustomProgressMap({});
-          setItem('customProgressMap', {});
-        }
-      }, [currentUser, setItem]);
-  
       // Expose generateSchedule via ref so that the parent can trigger generation.
+      // Notice we pass "true" for clearProgress.
       useImperativeHandle(
         ref,
         () => ({
           generateSchedule() {
             if (customPlanText && customPlanText.trim() !== '') {
-              updateCustomSchedule(customPlanText, false, false);
+              // Pass "true" as the third parameter to clear the progress map.
+              updateCustomSchedule(customPlanText, false, true);
             }
           },
         }),
