@@ -1,20 +1,20 @@
+// components/ControlsPanel.js
 import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const ControlsPanel = ({
   currentUser,
-  updateUserData,
   version,
   handleVersionChange,
   otChapters,
   setOtChapters,
   ntChapters,
   setNtChapters,
-  updateSchedule,
+  updateDefaultSchedule,
+  updateCustomSchedule,
   exportToExcel,
   customSchedule,
-  defaultSchedule, // Provided from the parent component.
   isCustomSchedule,
 }) => {
   const router = useRouter();
@@ -28,7 +28,7 @@ const ControlsPanel = ({
     setCustomPlanText(e.target.value);
   }, []);
 
-  // Toggle between default and custom planner modes.
+  // Toggle between default and custom modes.
   const toggleCustomizeMode = useCallback(() => {
     if (isCustomSchedule) {
       console.log('Switching from CUSTOM -> DEFAULT');
@@ -48,16 +48,14 @@ const ControlsPanel = ({
     handleVersionChange(e.target.value);
   }, [handleVersionChange]);
 
-  // When "Generate Schedule" is pressed, simply delegate to updateSchedule.
+  // When "Generate Schedule" is pressed, delegate to the appropriate hook.
   const handleCreateSchedule = useCallback(() => {
     if (isCustomSchedule) {
-      // In custom mode, pass the full text along with a flag.
-      updateSchedule(customPlanText, undefined, false, false, true, true);
+      updateCustomSchedule(customPlanText, false, false);
     } else {
-      // In default mode, pass OT and NT chapter inputs.
-      updateSchedule(otChapters, ntChapters, false, false, true, false);
+      updateDefaultSchedule(otChapters, ntChapters, false, false, true);
     }
-  }, [isCustomSchedule, customPlanText, otChapters, ntChapters, updateSchedule]);
+  }, [isCustomSchedule, customPlanText, otChapters, ntChapters, updateCustomSchedule, updateDefaultSchedule]);
 
   return (
     <div>
@@ -69,7 +67,6 @@ const ControlsPanel = ({
           <option value="esv">ESV</option>
         </select>
       </div>
-
       <h1>Bible Reading Planner</h1>
       <div className={styles.controls}>
         {/* Planner mode selector */}
@@ -83,7 +80,6 @@ const ControlsPanel = ({
             <option value="custom">Custom Planner</option>
           </select>
         </span>
-
         {isCustomSchedule ? (
           <div>
             <textarea
@@ -117,7 +113,6 @@ const ControlsPanel = ({
             </label>
           </div>
         )}
-
         <div>
           <button onClick={handleCreateSchedule}>Generate Schedule</button>
           <button onClick={exportToExcel}>Export to Excel</button>
