@@ -60,7 +60,7 @@ export function generateScheduleFromFirestore(otChapters, ntChapters, defaultPro
   const progressMap = { ...defaultProgress };
   for (let day = 1; day <= totalDays; day++) {
     if (!(day in progressMap)) {
-      progressMap[day] = false;
+      //progressMap[day] = false;
     }
   }
 
