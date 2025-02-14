@@ -11,11 +11,11 @@ const ControlsPanel = ({
   setOtChapters,
   ntChapters,
   setNtChapters,
-  updateSchedule,    // This is now only used when clicking "Generate Schedule"
+  updateSchedule,
   exportToExcel,
   customSchedule,
   isCustomSchedule,
-  handleModeChange   // This only updates local state
+  handleModeChange
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
@@ -91,8 +91,8 @@ const ControlsPanel = ({
         }
         return { day: index + 1, passages: formattedLine, url };
       });
-      // Call updateSchedule here to generate and write the custom schedule.
-      updateSchedule(customScheduleArr, undefined, false, false, false);
+      // Call updateSchedule here to generate and write the custom schedule with progress cleared.
+      updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
       // For default mode, validate OT/NT.
       const otNumber = parseInt(otChapters, 10);
@@ -105,8 +105,8 @@ const ControlsPanel = ({
         alert("NT chapters must be a number between 1 and 2000");
         return;
       }
-      // Call updateSchedule to generate the default schedule.
-      updateSchedule(otChapters, ntChapters, false, false, false);
+      // Call updateSchedule to generate the default schedule with progress cleared.
+      updateSchedule(otChapters, ntChapters, false, false, true);
     }
   }, [isCustomSchedule, customPlanText, version, otChapters, ntChapters, updateSchedule]);
 

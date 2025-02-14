@@ -100,7 +100,7 @@ export default function PlanComponent({ forcedMode }) {
   // --- NEW EFFECT: If in default mode and no schedule is loaded, generate the default schedule locally ---
   useEffect(() => {
     if (!isCustomSchedule && schedule.length === 0) {
-      // fromInit = true to indicate initial generation; forceUpdate and clearProgress are false.
+      // fromInit = true; we do NOT clear progress on initial load.
       updateSchedule(otChapters, ntChapters, true, false, false);
     }
   }, [isCustomSchedule, schedule, otChapters, ntChapters, updateSchedule]);
@@ -244,7 +244,7 @@ export default function PlanComponent({ forcedMode }) {
 
   const handleExportExcel = () => { exportScheduleToExcel(activeSchedule, activeProgressMap); };
 
-  // --- Handlers for version change (remains unchanged) ---
+  // --- Handler for version change (remains unchanged) ---
   const handleVersionChange = (newVersion) => {
     setCurrentVersion(newVersion);
     if (currentUser) {
