@@ -49,9 +49,11 @@ export default function PlanComponent({ forcedMode }) {
     currentUser ? "1" : (getItem('ntChapters', '1') || "1")
   );
   // Use local state for mode (custom vs. default)
-  const [isCustomSchedule, setIsCustomSchedule] = useState(() =>
-    currentUser ? false : getItem('isCustomSchedule', false)
-  );
+  const [isCustomSchedule, setIsCustomSchedule] = useState(() => {
+    if (forcedMode === 'custom') return true;
+    if (forcedMode === 'default') return false;
+    return getItem('isCustomSchedule', false); // Fallback to localStorage
+  });
 
   // Only version and mode use initial flags.
   const [initialVersionLoaded, setInitialVersionLoaded] = useState(false);
@@ -97,18 +99,6 @@ export default function PlanComponent({ forcedMode }) {
     setCustomProgressMap({});
     setCustomSchedule(null);
   };
-
-  // --- On mount: update local mode based on forcedMode only ---
-  useEffect(() => {
-    if (forcedMode === 'custom') {
-      setIsCustomSchedule(true);
-      setItem('isCustomSchedule', true);
-    } else if (forcedMode === 'default') {
-      setIsCustomSchedule(false);
-      setItem('isCustomSchedule', false);
-    }
-    // We removed calls to updateSchedule here to avoid unwanted Firestore writes.
-  }, []); // Run once on mount.
 
 
   // --- NEW EFFECT: If in default mode and no schedule is loaded, generate the default schedule locally ---
