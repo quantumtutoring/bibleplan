@@ -11,11 +11,11 @@ const ControlsPanel = ({
   setOtChapters,
   ntChapters,
   setNtChapters,
-  updateSchedule,
+  updateSchedule,    // This is now only used when clicking "Generate Schedule"
   exportToExcel,
   customSchedule,
   isCustomSchedule,
-  handleModeChange
+  handleModeChange   // This only updates local state
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
@@ -30,31 +30,22 @@ const ControlsPanel = ({
 
   // Toggle mode between default and custom.
   const toggleCustomizeMode = useCallback(() => {
-    console.log('Current isCustomSchedule:', isCustomSchedule);
     if (isCustomSchedule) {
+      // Switching from CUSTOM -> DEFAULT
       console.log('Switching from CUSTOM -> DEFAULT');
-      // When switching to default, regenerate schedule based on OT/NT.
-      updateSchedule(otChapters, ntChapters, false, true, false);
-      // Update mode locally only.
-      handleModeChange(false);
+      handleModeChange(false); // Only update local state.
       if (router.pathname !== '/') {
-        console.log('Routing to /');
         router.push('/');
       }
     } else {
+      // Switching from DEFAULT -> CUSTOM
       console.log('Switching from DEFAULT -> CUSTOM');
-      if (customSchedule && customSchedule.length > 0) {
-        updateSchedule(customSchedule, undefined, false, false, false);
-      } else {
-        updateSchedule([], undefined, false, false, false);
-      }
-      handleModeChange(true);
+      handleModeChange(true); // Only update local state.
       if (router.pathname !== '/custom') {
-        console.log('Routing to /custom');
         router.push('/custom');
       }
     }
-  }, [isCustomSchedule, otChapters, ntChapters, customSchedule, router, updateSchedule, handleModeChange]);
+  }, [isCustomSchedule, router, handleModeChange]);
 
   // Handle version dropdown changes.
   const handleVersionChangeInternal = useCallback((e) => {
@@ -74,9 +65,10 @@ const ControlsPanel = ({
       .join(" ");
   };
 
-  // When "Generate Schedule" is pressed.
+  // When "Generate Schedule" is pressed, we generate the schedule.
   const handleCreateSchedule = useCallback(() => {
     if (isCustomSchedule) {
+      // Process custom plan text.
       const lines = customPlanText
         .split('\n')
         .map(line => line.trim())
@@ -99,8 +91,10 @@ const ControlsPanel = ({
         }
         return { day: index + 1, passages: formattedLine, url };
       });
-      updateSchedule(customScheduleArr, undefined, false, false, true);
+      // Call updateSchedule here to generate and write the custom schedule.
+      updateSchedule(customScheduleArr, undefined, false, false, false);
     } else {
+      // For default mode, validate OT/NT.
       const otNumber = parseInt(otChapters, 10);
       const ntNumber = parseInt(ntChapters, 10);
       if (isNaN(otNumber) || otNumber < 1 || otNumber > 2000) {
@@ -111,7 +105,8 @@ const ControlsPanel = ({
         alert("NT chapters must be a number between 1 and 2000");
         return;
       }
-      updateSchedule(otChapters, ntChapters, false, false, true);
+      // Call updateSchedule to generate the default schedule.
+      updateSchedule(otChapters, ntChapters, false, false, false);
     }
   }, [isCustomSchedule, customPlanText, version, otChapters, ntChapters, updateSchedule]);
 
@@ -158,9 +153,7 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={otChapters}
-                onChange={(e) => {
-                  setOtChapters(e.target.value);
-                }}
+                onChange={(e) => setOtChapters(e.target.value)}
               />
             </label>
             <br />
@@ -170,9 +163,7 @@ const ControlsPanel = ({
                 type="number"
                 step="1"
                 value={ntChapters}
-                onChange={(e) => {
-                  setNtChapters(e.target.value);
-                }}
+                onChange={(e) => setNtChapters(e.target.value)}
               />
             </label>
           </div>

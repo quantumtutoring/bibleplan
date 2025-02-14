@@ -36,7 +36,7 @@ export default function PlanComponent({ forcedMode }) {
   const [ntChapters, setNtChapters] = useState(() =>
     currentUser ? "1" : (getItem('ntChapters', '1') || "1")
   );
-  // Initialize mode from localStorage (or false) when signed out.
+  // Use local state for mode (custom vs. default)
   const [isCustomSchedule, setIsCustomSchedule] = useState(() =>
     currentUser ? false : getItem('isCustomSchedule', false)
   );
@@ -85,35 +85,17 @@ export default function PlanComponent({ forcedMode }) {
     setCustomSchedule(null);
   };
 
-  // --- On mount: if signed out, load from localStorage; if signed in, merge Firestore values ---
+  // --- On mount: update local mode based on forcedMode only ---
   useEffect(() => {
-    // Handle forced mode if specified.
-    if (forcedMode === 'default') {
-      setIsCustomSchedule(false);
-    } else if (forcedMode === 'custom') {
-      setIsCustomSchedule(true);
-    }
-    // For signed out, load progress and custom schedule from localStorage.
-    const storedCustomSchedule = getItem('customSchedule', null);
-    if (!currentUser && forcedMode !== 'default' && storedCustomSchedule) {
-      setCustomSchedule(storedCustomSchedule);
-    }
-    const storedDefaultProgress = getItem('progressMap', null);
-    if (!currentUser && storedDefaultProgress) { setDefaultProgressMap(storedDefaultProgress); }
-    const storedCustomProgress = getItem('customProgressMap', null);
-    if (!currentUser && storedCustomProgress) { setCustomProgressMap(storedCustomProgress); }
     if (forcedMode === 'custom') {
-      updateSchedule(storedCustomSchedule || [], undefined, true);
+      setIsCustomSchedule(true);
+      setItem('isCustomSchedule', true);
     } else if (forcedMode === 'default') {
-      updateSchedule(otChapters, ntChapters, true);
-    } else {
-      if (isCustomSchedule) {
-        updateSchedule(storedCustomSchedule || [], undefined, true);
-      } else {
-        updateSchedule(otChapters, ntChapters, true);
-      }
+      setIsCustomSchedule(false);
+      setItem('isCustomSchedule', false);
     }
-  }, []); // Run only once on mount.
+    // Removed calls to updateSchedule that would trigger Firestore writes.
+  }, []); // Run once on mount.
 
   // --- Write settings to localStorage if signed out ---
   useEffect(() => { if (!currentUser) setItem('version', currentVersion); }, [currentVersion, currentUser, setItem]);
@@ -196,7 +178,7 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentVersion, activeSchedule, isCustomSchedule]);
 
-  // --- Handler for checkbox changes ---
+  // --- Handler for checkbox changes (unchanged) ---
   const handleCheckboxChange = (day, checked, event) => {
     const currentProgress = isCustomSchedule ? customProgressMap : defaultProgressMap;
     let newProg;
@@ -225,6 +207,7 @@ export default function PlanComponent({ forcedMode }) {
         setItem('progressMap', newProg);
       }
     }
+    // (Debounced saving for progress updates remains unchanged.)
     setSyncPending(true);
     if (currentUserRef.current && debouncedSaveRef.current) {
       debouncedSaveRef.current(newProg);
@@ -253,7 +236,7 @@ export default function PlanComponent({ forcedMode }) {
 
   const handleExportExcel = () => { exportScheduleToExcel(activeSchedule, activeProgressMap); };
 
-  // --- Handlers for version and mode changes ---
+  // --- Handlers for version change (remains unchanged) ---
   const handleVersionChange = (newVersion) => {
     setCurrentVersion(newVersion);
     if (currentUser) {
@@ -262,20 +245,24 @@ export default function PlanComponent({ forcedMode }) {
     }
   };
 
-  // When the dropdown changes mode, we update local state.
+  // Handler for mode changes now only updates local state.
   const handleModeChange = (newMode) => {
     setIsCustomSchedule(newMode);
+    setItem('isCustomSchedule', newMode);
   };
 
-  // *** New effect: Update mode to match the current URL ***
+  // --- Routing useEffect remains as needed ---
   useEffect(() => {
     if (!mounted) return;
+    // Optionally, you can use URL as the source of truth for UI mode.
     if (router.pathname === '/custom' && !isCustomSchedule) {
       setIsCustomSchedule(true);
+      setItem('isCustomSchedule', true);
     } else if (router.pathname === '/' && isCustomSchedule) {
       setIsCustomSchedule(false);
+      setItem('isCustomSchedule', false);
     }
-  }, [router.pathname, mounted, isCustomSchedule]);
+  }, [router.pathname, mounted, isCustomSchedule, setItem]);
 
   if (!mounted) return null;
 

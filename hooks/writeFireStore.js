@@ -13,6 +13,9 @@ const writeFireStore = () => {
     writeCount++;
     const timeStamp = new Date().toISOString();
     console.log(`[${timeStamp}] Write #${writeCount}: Updating data for user ${uid}`, data);
+    // Log a trace to see where this write is being initiated
+    console.trace(`[${timeStamp}] Trace for Write #${writeCount}`);
+    
     return setDoc(doc(db, "users", uid), data, { merge: true })
       .then(() => {
         const successTime = new Date().toISOString();
@@ -23,6 +26,7 @@ const writeFireStore = () => {
       .catch((error) => {
         const errorTime = new Date().toISOString();
         console.error(`[${errorTime}] Write #${writeCount} error for user ${uid}:`, error);
+        console.trace(`[${errorTime}] Trace for Write #${writeCount} error`);
         throw error;
       });
   }, []);
