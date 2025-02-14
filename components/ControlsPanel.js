@@ -1,22 +1,21 @@
-// components/ControlsPanel.js
 import React, { useCallback, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
 
 const ControlsPanel = ({
-  currentUser,            // currentUser from PlanComponent
-  updateUserData,         // updateUserData function from writeFireStore hook
-  version,                // current version (string)
-  handleVersionChange,    // function to update version
-  otChapters,             // OT chapters as a string
-  setOtChapters,          // setter for OT chapters (string)
-  ntChapters,             // NT chapters as a string
-  setNtChapters,          // setter for NT chapters (string)
-  updateSchedule,         // function to update schedule (and update Firestore on Generate Schedule)
-  exportToExcel,          // export function
-  customSchedule,         // custom schedule data
-  isCustomSchedule,       // boolean for custom vs. default mode
-  handleModeChange        // function to update mode
+  currentUser,
+  updateUserData,
+  version,
+  handleVersionChange,
+  otChapters,
+  setOtChapters,
+  ntChapters,
+  setNtChapters,
+  updateSchedule,
+  exportToExcel,
+  customSchedule,
+  isCustomSchedule,
+  handleModeChange
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
@@ -36,7 +35,7 @@ const ControlsPanel = ({
       console.log('Switching from CUSTOM -> DEFAULT');
       // When switching to default, regenerate schedule based on OT/NT.
       updateSchedule(otChapters, ntChapters, false, true, false);
-      // Update mode locally (Firestore update happens on Generate Schedule)
+      // Update mode locally only.
       handleModeChange(false);
       if (router.pathname !== '/') {
         console.log('Routing to /');
@@ -75,10 +74,9 @@ const ControlsPanel = ({
       .join(" ");
   };
 
-  // When "Generate Schedule" is pressed, validate OT/NT values and update schedule (which in turn updates Firestore).
+  // When "Generate Schedule" is pressed.
   const handleCreateSchedule = useCallback(() => {
     if (isCustomSchedule) {
-      // Process custom plan text.
       const lines = customPlanText
         .split('\n')
         .map(line => line.trim())
@@ -103,7 +101,6 @@ const ControlsPanel = ({
       });
       updateSchedule(customScheduleArr, undefined, false, false, true);
     } else {
-      // For default mode, validate OT/NT.
       const otNumber = parseInt(otChapters, 10);
       const ntNumber = parseInt(ntChapters, 10);
       if (isNaN(otNumber) || otNumber < 1 || otNumber > 2000) {
@@ -114,7 +111,6 @@ const ControlsPanel = ({
         alert("NT chapters must be a number between 1 and 2000");
         return;
       }
-      // Now, call updateSchedule with the string values (which will be stored as strings in Firestore).
       updateSchedule(otChapters, ntChapters, false, false, true);
     }
   }, [isCustomSchedule, customPlanText, version, otChapters, ntChapters, updateSchedule]);
@@ -163,9 +159,7 @@ const ControlsPanel = ({
                 step="1"
                 value={otChapters}
                 onChange={(e) => {
-                  // Update local state with the string value.
                   setOtChapters(e.target.value);
-                  // Do NOT update Firestore here; Firestore update happens on Generate Schedule.
                 }}
               />
             </label>

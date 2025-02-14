@@ -10,7 +10,7 @@ export default function Header({ currentUser, syncPending, exportToExcel, versio
 
   const handleSignOut = async () => {
     try {
-      // Optionally update Firestore with the current settings.
+      // Update Firestore with the current settings ONLY on sign-out.
       if (currentUser) {
         await updateUserData(currentUser.uid, {
           settings: { version, isCustomSchedule }

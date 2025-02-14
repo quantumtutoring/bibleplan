@@ -27,8 +27,6 @@ export default function PlanComponent({ forcedMode }) {
   const { updateUserData } = writeFireStore();
 
   // --- State for settings ---
-  // When signed out, values are read from localStorage.
-  // OT and NT are stored as strings.
   const [currentVersion, setCurrentVersion] = useState(() =>
     currentUser ? "nasb" : (getItem('version', 'nasb') || 'nasb')
   );
@@ -38,6 +36,7 @@ export default function PlanComponent({ forcedMode }) {
   const [ntChapters, setNtChapters] = useState(() =>
     currentUser ? "1" : (getItem('ntChapters', '1') || "1")
   );
+  // Initialize mode from localStorage (or false) when signed out.
   const [isCustomSchedule, setIsCustomSchedule] = useState(() =>
     currentUser ? false : getItem('isCustomSchedule', false)
   );
@@ -45,7 +44,7 @@ export default function PlanComponent({ forcedMode }) {
   // Only version and mode use initial flags.
   const [initialVersionLoaded, setInitialVersionLoaded] = useState(false);
   const [initialModeLoaded, setInitialModeLoaded] = useState(false);
-  // NEW: For OT/NT, we want to load them from Firestore only once.
+  // For OT/NT, load them from Firestore only once.
   const [initialChaptersLoaded, setInitialChaptersLoaded] = useState(false);
 
   // --- State for schedule and progress ---
@@ -91,16 +90,8 @@ export default function PlanComponent({ forcedMode }) {
     // Handle forced mode if specified.
     if (forcedMode === 'default') {
       setIsCustomSchedule(false);
-      if (currentUser) {
-        updateUserData(currentUser.uid, { settings: { isCustomSchedule: false } })
-          .catch(console.error);
-      }
     } else if (forcedMode === 'custom') {
       setIsCustomSchedule(true);
-      if (currentUser) {
-        updateUserData(currentUser.uid, { settings: { isCustomSchedule: true } })
-          .catch(console.error);
-      }
     }
     // For signed out, load progress and custom schedule from localStorage.
     const storedCustomSchedule = getItem('customSchedule', null);
@@ -262,7 +253,7 @@ export default function PlanComponent({ forcedMode }) {
 
   const handleExportExcel = () => { exportScheduleToExcel(activeSchedule, activeProgressMap); };
 
-  // --- Handlers for version and mode changes (update Firestore if signed in) ---
+  // --- Handlers for version and mode changes ---
   const handleVersionChange = (newVersion) => {
     setCurrentVersion(newVersion);
     if (currentUser) {
@@ -271,13 +262,20 @@ export default function PlanComponent({ forcedMode }) {
     }
   };
 
+  // When the dropdown changes mode, we update local state.
   const handleModeChange = (newMode) => {
     setIsCustomSchedule(newMode);
-    if (currentUser) {
-      updateUserData(currentUser.uid, { settings: { isCustomSchedule: newMode } })
-        .catch(console.error);
-    }
   };
+
+  // *** New effect: Update mode to match the current URL ***
+  useEffect(() => {
+    if (!mounted) return;
+    if (router.pathname === '/custom' && !isCustomSchedule) {
+      setIsCustomSchedule(true);
+    } else if (router.pathname === '/' && isCustomSchedule) {
+      setIsCustomSchedule(false);
+    }
+  }, [router.pathname, mounted, isCustomSchedule]);
 
   if (!mounted) return null;
 
