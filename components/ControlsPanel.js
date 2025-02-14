@@ -1,4 +1,4 @@
-// components/ControlsPanel.js
+// ControlsPanel.js
 import React, { useCallback, useRef } from 'react';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
@@ -12,7 +12,7 @@ const ControlsPanel = ({
   ntChapters,
   setNtChapters,
   isCustomSchedule,
-  updateUserData, // not used here but passed in case needed later
+  updateUserData,
   customPlanText,
   setCustomPlanText,
   onGenerate,

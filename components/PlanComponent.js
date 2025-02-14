@@ -1,5 +1,5 @@
-// components/PlanComponent.js
-import { useState, useEffect } from 'react';
+// PlanComponent.js
+import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import styles from '../styles/Home.module.css';
@@ -24,55 +24,44 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-
-
-
   // --- State for settings ---
-  // Initialize version and chapters from localStorage.
   const [currentVersion, setCurrentVersion] = useState(() => getItem('version', 'nasb'));
-  const [otChapters, setOtChapters] = useState(() => {
-    // If userData is already available and contains otChapters, use it; otherwise, fall back to localStorage.
-    return currentUser && userData && userData.otChapters
-      ? userData.otChapters : getItem('otChapters', '2');
-  });
-  
-  const [ntChapters, setNtChapters] = useState(() => {
-    return currentUser && userData && userData.ntChapters
-      ? userData.ntChapters : getItem('ntChapters', '1');
-  });
-  // Determine mode from forcedMode prop, localStorage, or default.
+  const [otChapters, setOtChapters] = useState(() =>
+    currentUser && userData && userData.otChapters
+      ? userData.otChapters
+      : getItem('otChapters', '2')
+  );
+  const [ntChapters, setNtChapters] = useState(() =>
+    currentUser && userData && userData.ntChapters
+      ? userData.ntChapters
+      : getItem('ntChapters', '1')
+  );
   const [isCustomSchedule, setIsCustomSchedule] = useState(() => {
     if (forcedMode === 'custom') return true;
     if (forcedMode === 'default') return false;
     return getItem('isCustomSchedule', false);
   });
-
-  // --- New state for custom input and generation trigger ---
   const [customPlanText, setCustomPlanText] = useState('');
-  const [generateTrigger, setGenerateTrigger] = useState(0);
+
+  // Create refs for DefaultPlan and CustomPlan.
+  const defaultPlanRef = useRef();
+  const customPlanRef = useRef();
+
+  // Combined generate handler.
   const handleGenerate = () => {
-    setGenerateTrigger(prev => prev + 1);
+    if (isCustomSchedule) {
+      // Call custom plan's generate method via its ref.
+      if (customPlanRef.current) {
+        customPlanRef.current.generateSchedule();
+      }
+    } else {
+      // For default mode, clear progress on generate.
+      if (defaultPlanRef.current) {
+        defaultPlanRef.current.generateSchedule(true);
+      }
+    }
   };
 
-  // --- reset state ---
-  const resetState = () => {
-    // Clear all localStorage
-    localStorage.clear();
-  
-    // Reset local state to defaults
-    setCurrentVersion("nasb");
-    setOtChapters("2");
-    setNtChapters("1");
-    setIsCustomSchedule(false);
-  
-    // Optionally, reinitialize localStorage with defaults if your app expects those keys to exist
-    setItem("version", "nasb");
-    setItem("otChapters", "2");
-    setItem("ntChapters", "1");
-    setItem("isCustomSchedule", false);
-  };
-  
- 
   // --- Routing: update mode based on URL ---
   useEffect(() => {
     if (router.pathname === '/custom' && !isCustomSchedule) {
@@ -84,30 +73,18 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [router.pathname, isCustomSchedule, setItem]);
 
-  // --- Version change handler ---
-  const handleVersionChange = (newVersion) => {
-    setCurrentVersion(newVersion);
-    setItem('version', newVersion);
-  };
-  
-
-  // --- Update localStorage when version changes ---
+  // --- Update localStorage when settings change ---
   useEffect(() => {
     setItem('version', currentVersion);
   }, [currentVersion, setItem]);
 
-  // --- When a user signs in, override version with Firestore value if present ---
   useEffect(() => {
-    if (currentUser && userData && userData.version) {
-      if (userData.version !== currentVersion) {
-        setCurrentVersion(userData.version);
-        setItem('version', userData.version);
-      }
+    if (currentUser && userData && userData.version && userData.version !== currentVersion) {
+      setCurrentVersion(userData.version);
+      setItem('version', userData.version);
     }
-  }, []); //don't do it continuously
+  }, []); // run once on mount
 
-
-  // -- keep chapters/day updated from firestore
   useEffect(() => {
     if (currentUser && userData) {
       if (userData.otChapters && userData.otChapters !== otChapters) {
@@ -121,18 +98,15 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentUser, userData, setItem]);
 
-  // -- update localstorage with them
-
   useEffect(() => {
     setItem('otChapters', otChapters);
   }, [otChapters, setItem]);
-  
+
   useEffect(() => {
     setItem('ntChapters', ntChapters);
   }, [ntChapters, setItem]);
-  
 
-  // --- Export handler (passed to ControlsPanel if needed) ---
+  // --- Export handler ---
   const handleExportExcel = (schedule, progressMap) => {
     exportScheduleToExcel(schedule, progressMap);
   };
@@ -148,15 +122,15 @@ export default function PlanComponent({ forcedMode }) {
       <Header
         currentUser={currentUser}
         version={currentVersion}
-        handleVersionChange={handleVersionChange}
-        resetState={resetState}
-        isCustomSchedule={isCustomSchedule} 
+        handleVersionChange={setCurrentVersion}
+        resetState={() => {}}
+        isCustomSchedule={isCustomSchedule}
       />
       <div className={styles.container} id="main-content">
         <ControlsPanel
           currentUser={currentUser}
           version={currentVersion}
-          handleVersionChange={handleVersionChange}
+          handleVersionChange={setCurrentVersion}
           otChapters={otChapters}
           setOtChapters={setOtChapters}
           ntChapters={ntChapters}
@@ -165,28 +139,27 @@ export default function PlanComponent({ forcedMode }) {
           updateUserData={updateUserData}
           customPlanText={customPlanText}
           setCustomPlanText={setCustomPlanText}
-          onGenerate={handleGenerate}
+          onGenerate={handleGenerate} // single generate callback for both modes
           exportToExcel={handleExportExcel}
-        
         />
         {isCustomSchedule ? (
           <CustomPlan
+            ref={customPlanRef}
             currentUser={currentUser}
             userData={userData}
             currentVersion={currentVersion}
             updateUserData={updateUserData}
             customPlanText={customPlanText}
-            generateTrigger={generateTrigger}
           />
         ) : (
           <DefaultPlan
+            ref={defaultPlanRef}
             currentUser={currentUser}
             userData={userData}
             currentVersion={currentVersion}
             otChapters={otChapters}
             ntChapters={ntChapters}
             updateUserData={updateUserData}
-            generateTrigger={generateTrigger}
           />
         )}
       </div>

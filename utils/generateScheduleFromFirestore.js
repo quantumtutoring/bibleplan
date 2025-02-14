@@ -20,10 +20,10 @@ export function generateScheduleFromFirestore(otChapters, ntChapters, defaultPro
 
   // Validate chapter numbers.
   if (isNaN(otNum) || otNum < 1 || otNum > 2000) {
-    throw new Error("Invalid OT chapter number. It must be between 1 and 2000.");
+    alert("Invalid OT chapter number. It must be between 1 and 2000.");
   }
   if (isNaN(ntNum) || ntNum < 1 || ntNum > 2000) {
-    throw new Error("Invalid NT chapter number. It must be between 1 and 2000.");
+    alert("Invalid NT chapter number. It must be between 1 and 2000.");
   }
 
   // Constants for total chapters.
