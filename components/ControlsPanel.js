@@ -16,7 +16,6 @@ const ControlsPanel = ({
   customSchedule,
   defaultSchedule, // Provided from the parent component.
   isCustomSchedule,
-  handleModeChange,
 }) => {
   const router = useRouter();
   const [customPlanText, setCustomPlanText] = useState('');
@@ -33,18 +32,16 @@ const ControlsPanel = ({
   const toggleCustomizeMode = useCallback(() => {
     if (isCustomSchedule) {
       console.log('Switching from CUSTOM -> DEFAULT');
-//      handleModeChange(false);
       if (router.pathname !== '/') {
         router.push('/');
       }
     } else {
       console.log('Switching from DEFAULT -> CUSTOM');
-  //    handleModeChange(true);
       if (router.pathname !== '/custom') {
         router.push('/custom');
       }
     }
-  }, [isCustomSchedule, router, handleModeChange]);
+  }, [isCustomSchedule, router]);
 
   // Handle version dropdown changes.
   const handleVersionChangeInternal = useCallback((e) => {

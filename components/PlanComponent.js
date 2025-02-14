@@ -103,8 +103,6 @@ export default function PlanComponent({ forcedMode }) {
 
 
   // --- NEW EFFECT: If in default mode and no schedule is loaded, generate the default schedule locally ---
-
-    
 // Inside a useEffect or event handler:
 useEffect(() => {
 
@@ -277,11 +275,7 @@ useEffect(() => {
     }
   };
 
-  // Handler for mode changes now only updates local state.
-  const handleModeChange = (newMode) => {
-    setIsCustomSchedule(newMode);
-    setItem('isCustomSchedule', newMode);
-  };
+
 
   // --- Routing useEffect remains as needed ---
   useEffect(() => {
@@ -325,7 +319,6 @@ useEffect(() => {
           exportToExcel={handleExportExcel}
           customSchedule={customSchedule}
           isCustomSchedule={isCustomSchedule}
-          handleModeChange={handleModeChange}
         />
         {activeSchedule && activeSchedule.length > 0 && (
           <ScheduleTable
