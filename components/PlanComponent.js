@@ -92,7 +92,7 @@ export default function PlanComponent({ forcedMode }) {
     setOtChapters("2");
     setNtChapters("1");
     setIsCustomSchedule(false);
-    setSchedule([]);
+    setSchedule(schedule);
     setDefaultProgressMap({});
     setCustomProgressMap({});
     setCustomSchedule(null);
@@ -125,7 +125,7 @@ useEffect(() => {
       if (progressMap && Object.keys(progressMap).length > 0) {
         updateDefaultProgressMap(progressMap);
       } else {
-        console.warn("Skipping update: Firestore returned an empty progressMap");
+        console.warn("Skipping update: generateScheduleFromFirestore returned an empty progressMap");
       }
     } catch (error) {
       console.error("Error generating schedule:", error);
@@ -180,7 +180,7 @@ useEffect(() => {
   useEffect(() => {
     if (currentUser && userData) {
       if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
-       // setDefaultProgressMap(userData.defaultProgress);//Not stored in FS
+        setDefaultProgressMap(userData.defaultProgress);//Not stored in FS
       }
       if (userData.customProgress && !isEqual(userData.customProgress, customProgressMap)) {
         setCustomProgressMap(userData.customProgress);
@@ -269,18 +269,23 @@ useEffect(() => {
 
   const [syncPending, setSyncPending] = useState(false);
   const debouncedSaveRef = useRef(null);
+
   useEffect(() => {
     debouncedSaveRef.current = debounce(newProg => {
-      if (currentUserRef.current) {
+      if (currentUserRef.current && Object.keys(newProg).length > 0) {
         const updateField = isCustomSchedule
           ? { customProgress: newProg }
           : { defaultProgress: newProg };
+  
+        console.log("📝 Saving progress to Firestore:", updateField);
+  
         updateUserData(currentUserRef.current.uid, updateField)
           .then(() => setSyncPending(false))
           .catch(console.error);
+      } else {
+        console.warn("⚠️ Skipping Firestore save because progress is empty.");
       }
     }, 1000);
-    return () => { debouncedSaveRef.current.cancel(); };
   }, [isCustomSchedule, updateUserData]);
 
 

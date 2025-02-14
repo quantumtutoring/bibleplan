@@ -24,6 +24,8 @@ export default function useSignOut({ currentUser, version, isCustomSchedule, res
         resetState();
       }
 
+
+
       // Navigate to home and force a full reload.
       await router.replace('/');
     } catch (error) {
