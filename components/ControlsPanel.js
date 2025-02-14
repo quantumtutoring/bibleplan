@@ -33,13 +33,13 @@ const ControlsPanel = ({
   const toggleCustomizeMode = useCallback(() => {
     if (isCustomSchedule) {
       console.log('Switching from CUSTOM -> DEFAULT');
-      handleModeChange(false);
+//      handleModeChange(false);
       if (router.pathname !== '/') {
         router.push('/');
       }
     } else {
       console.log('Switching from DEFAULT -> CUSTOM');
-      handleModeChange(true);
+  //    handleModeChange(true);
       if (router.pathname !== '/custom') {
         router.push('/custom');
       }

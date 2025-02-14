@@ -169,7 +169,7 @@ useEffect(() => {
   useEffect(() => {
     if (currentUser && userData) {
       if (userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
-        setDefaultProgressMap(userData.defaultProgress);//Not stored in FS
+       // setDefaultProgressMap(userData.defaultProgress);//Not stored in FS
       }
       if (userData.customProgress && !isEqual(userData.customProgress, customProgressMap)) {
         setCustomProgressMap(userData.customProgress);
