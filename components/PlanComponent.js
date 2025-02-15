@@ -69,6 +69,15 @@ export default function PlanComponent({ forcedMode }) {
     }
   };
 
+  const resetState = () => {
+    setCurrentVersion("nasb");
+    setOtChapters("2");
+    setNtChapters("1");
+    setIsCustomSchedule(false);
+    setCustomPlanText('');
+    // (Child components manage their own state.)
+  };
+
   // Routing: update mode based on URL.
   useEffect(() => {
     if (router.pathname === '/custom' && !isCustomSchedule) {
@@ -109,7 +118,7 @@ export default function PlanComponent({ forcedMode }) {
         currentUser={currentUser}
         version={currentVersion}
         handleVersionChange={setCurrentVersion}
-        resetState={() => {}}
+        resetState={resetState}
         isCustomSchedule={isCustomSchedule} 
       />
       <div className={styles.container} id="main-content">
