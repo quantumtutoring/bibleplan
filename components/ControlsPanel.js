@@ -46,12 +46,20 @@ const ControlsPanel = ({
     }
   }, [isCustomSchedule, router]);
 
-  // Handle version dropdown changes.
+  // Handle version dropdown changes with immediate Firestore update.
   const handleVersionChangeInternal = useCallback(
     (e) => {
-      handleVersionChange(e.target.value);
+      const newVersion = e.target.value;
+      // Update local state.
+      handleVersionChange(newVersion);
+      // If signed in, update Firestore immediately.
+      if (currentUser) {
+        updateUserData(currentUser.uid, { version: newVersion })
+          .then(() => console.log("Version updated in Firestore"))
+          .catch((err) => console.error("Error updating version:", err));
+      }
     },
-    [handleVersionChange]
+    [handleVersionChange, currentUser, updateUserData]
   );
 
   // When "Generate Schedule" is pressed, call the onGenerate callback.
