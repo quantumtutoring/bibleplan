@@ -1,3 +1,4 @@
+// PlanComponent.js
 import { useRouter } from 'next/router';
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
@@ -15,21 +16,36 @@ export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem } = useLocalStorage();
   const router = useRouter();
 
-  // Mount flag
+  // Mount flag.
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // Auth / Firestore data
+  // Auth / Firestore data.
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // When signed in, use Firestore values only (never read from localStorage).
-  // For signed-out users, fall back to localStorage.
+  // VERSION: For signed-in users, initialize from Firestore; for signed-out, fallback to localStorage.
   const initialVersion = currentUser
     ? (userData?.version || 'nasb')
     : getItem('version', 'nasb');
   const [currentVersion, setCurrentVersion] = useState(initialVersion);
 
+  // Flag to indicate the user has manually changed the version.
+  const [versionChanged, setVersionChanged] = useState(false);
+
+  // Always write currentVersion to localStorage.
+  useEffect(() => {
+    setItem('version', currentVersion);
+  }, [currentVersion, setItem]);
+
+  // Sync Firestore version if it differs and the user hasn’t just changed it.
+  useEffect(() => {
+    if (currentUser && userData && userData.version && !versionChanged && userData.version !== currentVersion) {
+      setCurrentVersion(userData.version);
+    }
+  }, [currentUser, userData, currentVersion, versionChanged]);
+
+  // OT/NT CHAPTERS.
   const initialOT = currentUser
     ? (userData?.otChapters || '2')
     : getItem('otChapters', '2');
@@ -40,6 +56,7 @@ export default function PlanComponent({ forcedMode }) {
     : getItem('ntChapters', '1');
   const [ntChapters, setNtChapters] = useState(initialNT);
 
+  // isCustomSchedule flag.
   const initialIsCustom = currentUser
     ? (userData?.isCustomSchedule ?? false)
     : getItem('isCustomSchedule', false);
@@ -49,14 +66,14 @@ export default function PlanComponent({ forcedMode }) {
   const [otChanged, setOtChanged] = useState(false);
   const [ntChanged, setNtChanged] = useState(false);
 
-  // customPlanText is local UI state.
+  // customPlanText state.
   const [customPlanText, setCustomPlanText] = useState('');
 
   // Create refs for DefaultPlan and CustomPlan.
   const defaultPlanRef = useRef();
   const customPlanRef = useRef();
 
-  // Combined generate handler for the single generate button.
+  // Combined generate handler.
   const handleGenerate = () => {
     if (isCustomSchedule) {
       if (customPlanRef.current) {
@@ -67,6 +84,14 @@ export default function PlanComponent({ forcedMode }) {
         defaultPlanRef.current.generateSchedule(true);
       }
     }
+  };
+
+  // Wrapper for version change that sets a flag.
+  const handleVersionChangeWrapper = (newVersion) => {
+    setCurrentVersion(newVersion);
+    setVersionChanged(true);
+    // Clear the flag after 1 second.
+    setTimeout(() => setVersionChanged(false), 1000);
   };
 
   const resetState = () => {
@@ -88,22 +113,13 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [router.pathname, isCustomSchedule, setItem]);
 
-  // For signed-out users, write chapter numbers to localStorage.
+  // Write OT/NT chapters to localStorage.
   useEffect(() => {
-    if (!currentUser) {
-      setItem('version', currentVersion);
-      setItem('otChapters', otChapters);
-      setItem('ntChapters', ntChapters);
-    } else {
-      // When signed in, update localStorage with Firestore values even though we never read from it.
-      setItem('version', currentVersion);
-      setItem('otChapters', otChapters);
-      setItem('ntChapters', ntChapters);
-    }
-  }, [currentVersion, otChapters, ntChapters, currentUser, setItem]);
+    setItem('otChapters', otChapters);
+    setItem('ntChapters', ntChapters);
+  }, [otChapters, ntChapters, setItem]);
 
-  // Update OT/NT chapter numbers and version when Firestore userData changes,
-  // but only if the user hasn't already edited them.
+  // Sync OT/NT chapters from Firestore if not manually changed.
   useEffect(() => {
     if (currentUser && userData) {
       if (!otChanged && userData.otChapters && userData.otChapters !== otChapters) {
@@ -112,11 +128,8 @@ export default function PlanComponent({ forcedMode }) {
       if (!ntChanged && userData.ntChapters && userData.ntChapters !== ntChapters) {
         setNtChapters(userData.ntChapters);
       }
-      if (userData.version && userData.version !== currentVersion) {
-        setCurrentVersion(userData.version);
-      }
     }
-  }, [currentUser, userData, otChanged, ntChanged, otChapters, ntChapters, currentVersion]);
+  }, [currentUser, userData, otChanged, ntChanged, otChapters, ntChapters]);
 
   if (!mounted) return null;
 
@@ -130,7 +143,7 @@ export default function PlanComponent({ forcedMode }) {
         <Header
           currentUser={currentUser}
           version={currentVersion}
-          handleVersionChange={setCurrentVersion}
+          handleVersionChange={handleVersionChangeWrapper}
           resetState={resetState}
           isCustomSchedule={isCustomSchedule}
           onSignOut={() => {}}
@@ -139,7 +152,7 @@ export default function PlanComponent({ forcedMode }) {
         <ControlsPanel
           currentUser={currentUser}
           version={currentVersion}
-          handleVersionChange={setCurrentVersion}
+          handleVersionChange={handleVersionChangeWrapper}
           otChapters={otChapters}
           setOtChapters={(value) => {
             setOtChapters(value);

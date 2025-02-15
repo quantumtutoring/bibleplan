@@ -50,9 +50,9 @@ const ControlsPanel = ({
   const handleVersionChangeInternal = useCallback(
     (e) => {
       const newVersion = e.target.value;
-      // Update local state.
+      // Update local state via the provided handler.
       handleVersionChange(newVersion);
-      // If signed in, update Firestore immediately.
+      // Immediately update Firestore so that Firestore stays in sync.
       if (currentUser) {
         updateUserData(currentUser.uid, { version: newVersion })
           .then(() => console.log("Version updated in Firestore"))
@@ -62,7 +62,7 @@ const ControlsPanel = ({
     [handleVersionChange, currentUser, updateUserData]
   );
 
-  // When "Generate Schedule" is pressed, call the onGenerate callback.
+  // When "Generate Schedule" is pressed.
   const handleCreateSchedule = useCallback(() => {
     onGenerate();
   }, [onGenerate]);
