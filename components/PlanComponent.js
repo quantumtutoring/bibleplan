@@ -1,8 +1,6 @@
-// PlanComponent.js
+import { useRouter } from 'next/router';
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import styles from '../styles/Home.module.css';
 import { useListenFireStore } from '../contexts/ListenFireStore';
 import Header from './Header';
 import ControlsPanel from './ControlsPanel';
@@ -11,6 +9,7 @@ import CustomPlan from './CustomPlan';
 import { exportScheduleToExcel } from '../utils/exportExcel';
 import writeFireStore from '../hooks/writeFireStore';
 import useLocalStorage from '../hooks/useLocalStorage';
+import styles from '../styles/Home.module.css';
 
 export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem } = useLocalStorage();
@@ -24,29 +23,31 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // For signed-out users, use localStorage defaults.
-  // For signed-in users, we read Firestore values only once upon sign in.
-  const initialVersion =
-    currentUser && userData && userData.version
-      ? userData.version
-      : getItem('version', 'nasb');
+  // When signed in, use Firestore values only (never read from localStorage).
+  // For signed-out users, fall back to localStorage.
+  const initialVersion = currentUser
+    ? (userData?.version || 'nasb')
+    : getItem('version', 'nasb');
   const [currentVersion, setCurrentVersion] = useState(initialVersion);
 
-  const initialOT =
-    currentUser && userData && userData.otChapters
-      ? userData.otChapters
-      : getItem('otChapters', '2');
+  const initialOT = currentUser
+    ? (userData?.otChapters || '2')
+    : getItem('otChapters', '2');
   const [otChapters, setOtChapters] = useState(initialOT);
 
-  const initialNT =
-    currentUser && userData && userData.ntChapters
-      ? userData.ntChapters
-      : getItem('ntChapters', '1');
+  const initialNT = currentUser
+    ? (userData?.ntChapters || '1')
+    : getItem('ntChapters', '1');
   const [ntChapters, setNtChapters] = useState(initialNT);
 
-  const initialIsCustom =
-    currentUser && userData ? userData.isCustomSchedule : getItem('isCustomSchedule', false);
+  const initialIsCustom = currentUser
+    ? (userData?.isCustomSchedule ?? false)
+    : getItem('isCustomSchedule', false);
   const [isCustomSchedule, setIsCustomSchedule] = useState(initialIsCustom);
+
+  // Track if user has manually changed the chapter inputs.
+  const [otChanged, setOtChanged] = useState(false);
+  const [ntChanged, setNtChanged] = useState(false);
 
   // customPlanText is local UI state.
   const [customPlanText, setCustomPlanText] = useState('');
@@ -63,7 +64,6 @@ export default function PlanComponent({ forcedMode }) {
       }
     } else {
       if (defaultPlanRef.current) {
-        // In default mode, we clear progress on generate.
         defaultPlanRef.current.generateSchedule(true);
       }
     }
@@ -75,7 +75,6 @@ export default function PlanComponent({ forcedMode }) {
     setNtChapters("1");
     setIsCustomSchedule(false);
     setCustomPlanText('');
-    // (Child components manage their own state.)
   };
 
   // Routing: update mode based on URL.
@@ -95,17 +94,29 @@ export default function PlanComponent({ forcedMode }) {
       setItem('version', currentVersion);
       setItem('otChapters', otChapters);
       setItem('ntChapters', ntChapters);
+    } else {
+      // When signed in, update localStorage with Firestore values even though we never read from it.
+      setItem('version', currentVersion);
+      setItem('otChapters', otChapters);
+      setItem('ntChapters', ntChapters);
     }
   }, [currentVersion, otChapters, ntChapters, currentUser, setItem]);
 
-  // Export handler.
-  const handleExportExcel = (schedule, progressMap) => {
-    exportScheduleToExcel(schedule, progressMap);
-  };
-
-  // State to track if sign out is in progress.
-  const [isSigningOut, setIsSigningOut] = useState(false);
-  const fadeDuration = 500; // duration in ms
+  // Update OT/NT chapter numbers and version when Firestore userData changes,
+  // but only if the user hasn't already edited them.
+  useEffect(() => {
+    if (currentUser && userData) {
+      if (!otChanged && userData.otChapters && userData.otChapters !== otChapters) {
+        setOtChapters(userData.otChapters);
+      }
+      if (!ntChanged && userData.ntChapters && userData.ntChapters !== ntChapters) {
+        setNtChapters(userData.ntChapters);
+      }
+      if (userData.version && userData.version !== currentVersion) {
+        setCurrentVersion(userData.version);
+      }
+    }
+  }, [currentUser, userData, otChanged, ntChanged, otChapters, ntChapters, currentVersion]);
 
   if (!mounted) return null;
 
@@ -115,55 +126,57 @@ export default function PlanComponent({ forcedMode }) {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
-      {/* This container fades out, but the background (styles.pageBackground) stays static */}
-      <div style={{ opacity: isSigningOut ? 0 : 1, transition: `opacity ${fadeDuration}ms ease-out` }}>
+      <div className={styles.container} id="main-content">
         <Header
           currentUser={currentUser}
           version={currentVersion}
           handleVersionChange={setCurrentVersion}
           resetState={resetState}
           isCustomSchedule={isCustomSchedule}
-          // Pass a callback to notify PlanComponent that sign out has started.
-          onSignOut={() => setIsSigningOut(true)}
-          fadeDuration={fadeDuration}
+          onSignOut={() => {}}
+          fadeDuration={500}
         />
-        <div className={styles.container} id="main-content">
-          <ControlsPanel
+        <ControlsPanel
+          currentUser={currentUser}
+          version={currentVersion}
+          handleVersionChange={setCurrentVersion}
+          otChapters={otChapters}
+          setOtChapters={(value) => {
+            setOtChapters(value);
+            setOtChanged(true);
+          }}
+          ntChapters={ntChapters}
+          setNtChapters={(value) => {
+            setNtChapters(value);
+            setNtChanged(true);
+          }}
+          isCustomSchedule={isCustomSchedule}
+          updateUserData={updateUserData}
+          customPlanText={customPlanText}
+          setCustomPlanText={setCustomPlanText}
+          onGenerate={handleGenerate}
+          exportToExcel={exportScheduleToExcel}
+        />
+        {isCustomSchedule ? (
+          <CustomPlan
+            ref={customPlanRef}
             currentUser={currentUser}
-            version={currentVersion}
-            handleVersionChange={setCurrentVersion}
-            otChapters={otChapters}
-            setOtChapters={setOtChapters}
-            ntChapters={ntChapters}
-            setNtChapters={setNtChapters}
-            isCustomSchedule={isCustomSchedule}
+            userData={userData}
+            currentVersion={currentVersion}
             updateUserData={updateUserData}
             customPlanText={customPlanText}
-            setCustomPlanText={setCustomPlanText}
-            onGenerate={handleGenerate}
-            exportToExcel={handleExportExcel}
           />
-          {isCustomSchedule ? (
-            <CustomPlan
-              ref={customPlanRef}
-              currentUser={currentUser}
-              userData={userData}
-              currentVersion={currentVersion}
-              updateUserData={updateUserData}
-              customPlanText={customPlanText}
-            />
-          ) : (
-            <DefaultPlan
-              ref={defaultPlanRef}
-              currentUser={currentUser}
-              userData={userData}
-              currentVersion={currentVersion}
-              otChapters={otChapters}
-              ntChapters={ntChapters}
-              updateUserData={updateUserData}
-            />
-          )}
-        </div>
+        ) : (
+          <DefaultPlan
+            ref={defaultPlanRef}
+            currentUser={currentUser}
+            userData={userData}
+            currentVersion={currentVersion}
+            otChapters={otChapters}
+            ntChapters={ntChapters}
+            updateUserData={updateUserData}
+          />
+        )}
       </div>
     </div>
   );

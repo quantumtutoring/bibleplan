@@ -1,4 +1,4 @@
-// components/CustomPlan.js
+// CustomPlan.js
 import React, {
     useState,
     useEffect,
@@ -18,13 +18,15 @@ import React, {
     ) => {
       const { getItem, setItem } = useLocalStorage();
   
-      const initialSchedule = currentUser && userData && userData.customSchedule
-        ? userData.customSchedule
+      // When signed in, derive initial schedule and progress solely from Firestore.
+      // For signed-out users, fall back to localStorage.
+      const initialSchedule = currentUser
+        ? (userData?.customSchedule || [])
         : getItem('customSchedule', []);
       const [customSchedule, setCustomSchedule] = useState(initialSchedule);
   
-      const initialProgress = currentUser && userData && userData.customProgress
-        ? userData.customProgress
+      const initialProgress = currentUser
+        ? (userData?.customProgress || {})
         : getItem('customProgressMap', {});
       const [customProgressMap, setCustomProgressMap] = useState(initialProgress);
   
@@ -39,15 +41,25 @@ import React, {
         currentUser,
       });
   
-      // Merge Firestore custom schedule and progress if available.
+      // Sync Firestore changes to local state and localStorage.
       useEffect(() => {
-        if (currentUser && userData && userData.customSchedule) {
-          setCustomSchedule(userData.customSchedule);
-          if (userData.customProgress) {
+        if (currentUser && userData) {
+          if (
+            userData.customSchedule &&
+            !isEqual(userData.customSchedule, customSchedule)
+          ) {
+            setCustomSchedule(userData.customSchedule);
+            setItem('customSchedule', userData.customSchedule);
+          }
+          if (
+            userData.customProgress &&
+            !isEqual(userData.customProgress, customProgressMap)
+          ) {
             setCustomProgressMap(userData.customProgress);
+            setItem('customProgressMap', userData.customProgress);
           }
         }
-      }, [currentUser, userData]);
+      }, [currentUser, userData, customSchedule, customProgressMap, setItem]);
   
       // Expose generateSchedule via ref.
       // When generate is called, we clear the custom progress map.
