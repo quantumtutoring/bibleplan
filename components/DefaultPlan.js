@@ -19,7 +19,7 @@ const DefaultPlan = forwardRef(
   ) => {
     const { getItem, setItem } = useLocalStorage();
 
-    // Always maintain the schedule locally (not loaded from Firestore).
+    // The schedule is maintained locally. Initially, we read from localStorage.
     const initialSchedule = getItem('defaultSchedule', []);
     const [schedule, setSchedule] = useState(initialSchedule);
 
@@ -39,13 +39,13 @@ const DefaultPlan = forwardRef(
       currentUser,
     });
 
-    // On mount, generate the schedule using chapter values.
+    // On mount only (run once), generate the schedule.
     useEffect(() => {
       if (currentUser && userData) {
-        // Use Firestore chapter values if available, else fall back to props.
+        // Use Firestore chapter values if available; else, fall back to props.
         const fsOT = userData.otChapters ? userData.otChapters : otChapters;
         const fsNT = userData.ntChapters ? userData.ntChapters : ntChapters;
-        // Generate the schedule and progress map using the utility function directly.
+        // Generate the schedule using the utility function directly.
         const { schedule: newSchedule, progressMap: newProgressMap } = generateScheduleFromFirestore(
           fsOT,
           fsNT,
@@ -60,15 +60,16 @@ const DefaultPlan = forwardRef(
           setDefaultProgressMap(newProgressMap);
           setItem('progressMap', newProgressMap);
         }
-        console.log("Generated table from FS chapter values without writing to Firestore.");
+        console.log("Loaded schedule from Firestore chapter values on mount (no live updates).");
       } else {
-        // For signed-out users, update using local values (this may write to localStorage/Firestore as defined).
+        // For signed-out users, generate schedule from local values once.
         updateDefaultSchedule(otChapters, ntChapters, false, false, false, defaultProgressMap);
       }
+      // Empty dependency array: this effect runs only once on mount.
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUser, userData, otChapters, ntChapters, currentVersion]);
+    }, []);
 
-    // When Firestore progress becomes available, update local progress.
+    // Listen for changes in Firestore progress (if signed in) and update local state.
     useEffect(() => {
       if (currentUser && userData && userData.defaultProgress) {
         setDefaultProgressMap(userData.defaultProgress);
@@ -76,13 +77,11 @@ const DefaultPlan = forwardRef(
       }
     }, [currentUser, userData, setItem]);
 
-    // Expose generateSchedule via ref.
+    // Expose generateSchedule via ref. This method is triggered only when the user presses the generate button.
     useImperativeHandle(
       ref,
       () => ({
         generateSchedule(clearProgress) {
-          // When the user explicitly triggers generation (e.g. by pressing the generate button),
-          // we call updateDefaultSchedule which will write to Firestore if needed.
           updateDefaultSchedule(otChapters, ntChapters, false, false, clearProgress);
         },
       }),
@@ -106,7 +105,7 @@ const DefaultPlan = forwardRef(
       }
       if (isEqual(newProg, currentProgress)) return;
       setDefaultProgressMap(newProg);
-      // On checkbox change, write to Firestore if signed in; otherwise, update localStorage.
+      // Write to Firestore if signed in; otherwise update localStorage.
       if (currentUser) {
         updateUserData(currentUser.uid, { defaultProgress: newProg }).catch(console.error);
       } else {
