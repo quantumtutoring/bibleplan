@@ -52,7 +52,8 @@ export default function useUpdateDefaultSchedule({
     );
 
     // Update local schedule state.
-    setSchedule(schedule);
+ // Only update local schedule state if schedule is non-empty.
+  setSchedule(schedule);
 
     // Build the update object for Firestore.
     const updateData = {
