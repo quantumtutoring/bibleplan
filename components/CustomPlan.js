@@ -5,8 +5,10 @@ import React, {
     useRef,
     forwardRef,
     useImperativeHandle,
+    useCallback,
   } from 'react';
   import isEqual from 'lodash.isequal';
+  import debounce from 'lodash.debounce';
   import useLocalStorage from '../hooks/useLocalStorage';
   import useUpdateCustomSchedule from '../hooks/useUpdateCustomSchedule';
   import ScheduleTable from './ScheduleTable';
@@ -18,7 +20,7 @@ import React, {
     ) => {
       const { getItem, setItem } = useLocalStorage();
   
-      // When signed in, derive initial schedule and progress solely from Firestore.
+      // For signed-in users, derive initial schedule and progress solely from Firestore.
       // For signed-out users, fall back to localStorage.
       const initialSchedule = currentUser
         ? (userData?.customSchedule || [])
@@ -29,6 +31,9 @@ import React, {
         ? (userData?.customProgress || {})
         : getItem('customProgressMap', {});
       const [customProgressMap, setCustomProgressMap] = useState(initialProgress);
+  
+      // A flag to indicate that a local custom progress update is pending.
+      const [progressPending, setProgressPending] = useState(false);
   
       const updateCustomSchedule = useUpdateCustomSchedule({
         currentVersion,
@@ -41,7 +46,8 @@ import React, {
         currentUser,
       });
   
-      // Sync Firestore changes to local state and localStorage.
+      // Sync Firestore changes to local state and localStorage for custom schedule/progress,
+      // but only update progress if no local change is pending.
       useEffect(() => {
         if (currentUser && userData) {
           if (
@@ -53,13 +59,14 @@ import React, {
           }
           if (
             userData.customProgress &&
-            !isEqual(userData.customProgress, customProgressMap)
+            !isEqual(userData.customProgress, customProgressMap) &&
+            !progressPending
           ) {
             setCustomProgressMap(userData.customProgress);
             setItem('customProgressMap', userData.customProgress);
           }
         }
-      }, [currentUser, userData, customSchedule, customProgressMap, setItem]);
+      }, [currentUser, userData, customSchedule, customProgressMap, progressPending, setItem]);
   
       // Expose generateSchedule via ref.
       // When generate is called, we clear the custom progress map.
@@ -74,6 +81,23 @@ import React, {
           },
         }),
         [customPlanText, updateCustomSchedule]
+      );
+  
+      // Create a debounced function for updating custom progress.
+      const debouncedUpdateProgress = useCallback(
+        debounce((progress) => {
+          if (currentUser) {
+            updateUserData(currentUser.uid, { customProgress: progress })
+              .catch(console.error)
+              .finally(() => {
+                setProgressPending(false);
+              });
+          } else {
+            setItem('customProgressMap', progress);
+            setProgressPending(false);
+          }
+        }, 1000),
+        [currentUser, updateUserData, setItem]
       );
   
       // Handle checkbox changes.
@@ -92,12 +116,12 @@ import React, {
           newProg = { ...currentProgress, [day]: checked };
         }
         if (isEqual(newProg, currentProgress)) return;
+        // Update UI immediately.
         setCustomProgressMap(newProg);
-        if (currentUser) {
-          updateUserData(currentUser.uid, { customProgress: newProg }).catch(console.error);
-        } else {
-          setItem('customProgressMap', newProg);
-        }
+        // Mark that a local update is pending.
+        setProgressPending(true);
+        // Debounce the update to Firestore/localStorage.
+        debouncedUpdateProgress(newProg);
         lastCheckedRef.current = day;
       };
   

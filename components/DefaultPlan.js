@@ -5,8 +5,10 @@ import React, {
   useRef,
   forwardRef,
   useImperativeHandle,
+  useCallback,
 } from 'react';
 import isEqual from 'lodash.isequal';
+import debounce from 'lodash.debounce';
 import useLocalStorage from '../hooks/useLocalStorage';
 import useUpdateDefaultSchedule from '../hooks/useUpdateDefaultSchedule';
 import { generateScheduleFromFirestore } from '../utils/generateScheduleFromFirestore';
@@ -26,6 +28,9 @@ const DefaultPlan = forwardRef(
     const initialProgress = currentUser ? {} : getItem('progressMap', {});
     const [defaultProgressMap, setDefaultProgressMap] = useState(initialProgress);
 
+    // Flag to indicate a local progress update is pending.
+    const [progressPending, setProgressPending] = useState(false);
+
     const updateDefaultSchedule = useUpdateDefaultSchedule({
       currentVersion,
       setSchedule,
@@ -35,7 +40,7 @@ const DefaultPlan = forwardRef(
       currentUser,
     });
 
-    // For signed-in users, update schedule automatically when OT/NT or version change.
+    // For signed-in users, auto-update schedule when OT/NT or version change.
     useEffect(() => {
       if (currentUser && userData) {
         const fsOT = userData.otChapters ? userData.otChapters : otChapters;
@@ -48,37 +53,36 @@ const DefaultPlan = forwardRef(
         );
         if (!isEqual(newSchedule, schedule)) {
           setSchedule(newSchedule);
-          // Write to localStorage for consistency.
           setItem('defaultSchedule', newSchedule);
         }
-        if (!isEqual(newProgressMap, defaultProgressMap)) {
-          setDefaultProgressMap(newProgressMap);
-          setItem('progressMap', newProgressMap);
+        // Only update progress from Firestore if no local change is pending.
+        if (!progressPending && userData.defaultProgress && !isEqual(userData.defaultProgress, defaultProgressMap)) {
+          setDefaultProgressMap(userData.defaultProgress);
+          setItem('progressMap', userData.defaultProgress);
         }
         console.log("Schedule auto-updated (signed-in) due to chapter/version change.");
       }
-      // For signed-out users, do not auto-update on input changes.
-      // They must press the "Generate Schedule" button to update.
-    }, [otChapters, ntChapters, currentVersion, currentUser, userData, setItem, schedule, defaultProgressMap]);
+    }, [otChapters, ntChapters, currentVersion, currentUser, userData, setItem, schedule, defaultProgressMap, progressPending]);
 
     // For signed-out users, generate the schedule only once on mount.
     useEffect(() => {
       if (!currentUser) {
         updateDefaultSchedule(otChapters, ntChapters, false, false, false, defaultProgressMap);
       }
-      // Run only once.
+      // Run only once on mount.
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    // Listen for changes in Firestore progress (if signed in) and update local state.
+    // Listen for changes in Firestore progress (if signed in) and update local state,
+    // but skip updates while a local change is pending.
     useEffect(() => {
-      if (currentUser && userData && userData.defaultProgress) {
+      if (currentUser && userData && userData.defaultProgress && !progressPending) {
         setDefaultProgressMap(userData.defaultProgress);
         setItem('progressMap', userData.defaultProgress);
       }
-    }, [currentUser, userData, setItem]);
+    }, [currentUser, userData, setItem, progressPending]);
 
-    // Expose generateSchedule via ref. This method is used when the user presses "Generate Schedule."
+    // Expose generateSchedule via ref (for manual generation).
     useImperativeHandle(
       ref,
       () => ({
@@ -87,6 +91,23 @@ const DefaultPlan = forwardRef(
         },
       }),
       [otChapters, ntChapters, updateDefaultSchedule]
+    );
+
+    // Create a debounced function for updating progress.
+    const debouncedUpdateProgress = useCallback(
+      debounce((progress) => {
+        if (currentUser) {
+          updateUserData(currentUser.uid, { defaultProgress: progress })
+            .catch(console.error)
+            .finally(() => {
+              setProgressPending(false);
+            });
+        } else {
+          setItem('progressMap', progress);
+          setProgressPending(false);
+        }
+      }, 1000),
+      [currentUser, updateUserData, setItem]
     );
 
     // Handle checkbox changes.
@@ -105,13 +126,12 @@ const DefaultPlan = forwardRef(
         newProg = { ...currentProgress, [day]: checked };
       }
       if (isEqual(newProg, currentProgress)) return;
+      // Immediately update UI state.
       setDefaultProgressMap(newProg);
-      // Write to Firestore if signed in; otherwise update localStorage.
-      if (currentUser) {
-        updateUserData(currentUser.uid, { defaultProgress: newProg }).catch(console.error);
-      } else {
-        setItem('progressMap', newProg);
-      }
+      // Mark that a local update is pending.
+      setProgressPending(true);
+      // Debounce the update to Firestore/localStorage.
+      debouncedUpdateProgress(newProg);
       lastCheckedRef.current = day;
     };
 
