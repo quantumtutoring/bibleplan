@@ -1,4 +1,4 @@
-// components/PlanComponent.js
+// PlanComponent.js
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -24,24 +24,34 @@ export default function PlanComponent({ forcedMode }) {
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // For signed-out users, use localStorage defaults;
-  // for signed-in users, we use the Firestore values as the source of truth.
-  const initialVersion = currentUser && userData && userData.version ? userData.version : getItem('version', 'nasb');
+  // For signed-out users, use localStorage defaults.
+  // For signed-in users, we read Firestore values only once upon sign in.
+  const initialVersion =
+    currentUser && userData && userData.version
+      ? userData.version
+      : getItem('version', 'nasb');
   const [currentVersion, setCurrentVersion] = useState(initialVersion);
 
-  const initialOT = currentUser && userData && userData.otChapters ? userData.otChapters : getItem('otChapters', '2');
+  const initialOT =
+    currentUser && userData && userData.otChapters
+      ? userData.otChapters
+      : getItem('otChapters', '2');
   const [otChapters, setOtChapters] = useState(initialOT);
 
-  const initialNT = currentUser && userData && userData.ntChapters ? userData.ntChapters : getItem('ntChapters', '1');
+  const initialNT =
+    currentUser && userData && userData.ntChapters
+      ? userData.ntChapters
+      : getItem('ntChapters', '1');
   const [ntChapters, setNtChapters] = useState(initialNT);
 
-  const initialIsCustom = currentUser && userData ? userData.isCustomSchedule : getItem('isCustomSchedule', false);
+  const initialIsCustom =
+    currentUser && userData ? userData.isCustomSchedule : getItem('isCustomSchedule', false);
   const [isCustomSchedule, setIsCustomSchedule] = useState(initialIsCustom);
 
   // customPlanText is local UI state.
   const [customPlanText, setCustomPlanText] = useState('');
 
-  // Create refs for DefaultPlan and CustomPlan (both expose generateSchedule methods).
+  // Create refs for DefaultPlan and CustomPlan.
   const defaultPlanRef = useRef();
   const customPlanRef = useRef();
 
@@ -59,22 +69,6 @@ export default function PlanComponent({ forcedMode }) {
     }
   };
 
-
-// nt/ot Chapter sync
-useEffect(() => {
-  if (currentUser && userData) {
-    if (userData.otChapters && userData.otChapters !== otChapters) {
-      setOtChapters(userData.otChapters);
-      setItem('otChapters', userData.otChapters);
-    }
-    if (userData.ntChapters && userData.ntChapters !== ntChapters) {
-      setNtChapters(userData.ntChapters);
-      setItem('ntChapters', userData.ntChapters);
-    }
-  }
-}, [currentUser, userData]);
-
-
   // Routing: update mode based on URL.
   useEffect(() => {
     if (router.pathname === '/custom' && !isCustomSchedule) {
@@ -86,7 +80,7 @@ useEffect(() => {
     }
   }, [router.pathname, isCustomSchedule, setItem]);
 
-  // For signed-out users, keep writing to localStorage.
+  // For signed-out users, write chapter numbers to localStorage.
   useEffect(() => {
     if (!currentUser) {
       setItem('version', currentVersion);
@@ -94,6 +88,9 @@ useEffect(() => {
       setItem('ntChapters', ntChapters);
     }
   }, [currentVersion, otChapters, ntChapters, currentUser, setItem]);
+
+  // Note: We intentionally do NOT add an effect here to update `currentVersion` when userData changes.
+  // The version is read only once upon sign-in (via initialVersion) and then remains unchanged.
 
   // Export handler.
   const handleExportExcel = (schedule, progressMap) => {
