@@ -13,22 +13,21 @@ import React, {
   
   const CustomPlan = forwardRef(
     (
-      { 
-        currentUser, 
-        userData, 
-        currentVersion, 
-        updateUserData, 
-        customPlanText 
-      },
+      { currentUser, userData, currentVersion, updateUserData, customPlanText },
       ref
     ) => {
       const { getItem, setItem } = useLocalStorage();
-      const [customSchedule, setCustomSchedule] = useState(() =>
-        currentUser ? [] : getItem('customSchedule', [])
-      );
-      const [customProgressMap, setCustomProgressMap] = useState(() =>
-        currentUser ? {} : getItem('customProgressMap', {})
-      );
+  
+      const initialSchedule = currentUser && userData && userData.customSchedule
+        ? userData.customSchedule
+        : getItem('customSchedule', []);
+      const [customSchedule, setCustomSchedule] = useState(initialSchedule);
+  
+      const initialProgress = currentUser && userData && userData.customProgress
+        ? userData.customProgress
+        : getItem('customProgressMap', {});
+      const [customProgressMap, setCustomProgressMap] = useState(initialProgress);
+  
       const updateCustomSchedule = useUpdateCustomSchedule({
         currentVersion,
         setSchedule: setCustomSchedule,
@@ -40,7 +39,7 @@ import React, {
         currentUser,
       });
   
-      // Merge Firestore custom schedule and progress, if available.
+      // Merge Firestore custom schedule and progress if available.
       useEffect(() => {
         if (currentUser && userData && userData.customSchedule) {
           setCustomSchedule(userData.customSchedule);
@@ -50,14 +49,14 @@ import React, {
         }
       }, [currentUser, userData]);
   
-      // Expose generateSchedule via ref so that the parent can trigger generation.
-      // Notice we pass "true" for clearProgress.
+      // Expose generateSchedule via ref.
+      // When generate is called, we clear the custom progress map.
       useImperativeHandle(
         ref,
         () => ({
           generateSchedule() {
             if (customPlanText && customPlanText.trim() !== '') {
-              // Pass "true" as the third parameter to clear the progress map.
+              // Pass true as a flag to clear progress.
               updateCustomSchedule(customPlanText, false, true);
             }
           },
@@ -65,7 +64,7 @@ import React, {
         [customPlanText, updateCustomSchedule]
       );
   
-      // Handle checkbox changes for custom schedule.
+      // Handle checkbox changes.
       const lastCheckedRef = useRef(null);
       const handleCheckboxChange = (day, checked, event) => {
         const currentProgress = customProgressMap;
@@ -82,11 +81,12 @@ import React, {
         }
         if (isEqual(newProg, currentProgress)) return;
         setCustomProgressMap(newProg);
-        setItem('customProgressMap', newProg);
-        lastCheckedRef.current = day;
         if (currentUser) {
           updateUserData(currentUser.uid, { customProgress: newProg }).catch(console.error);
+        } else {
+          setItem('customProgressMap', newProg);
         }
+        lastCheckedRef.current = day;
       };
   
       return customSchedule && customSchedule.length > 0 ? (

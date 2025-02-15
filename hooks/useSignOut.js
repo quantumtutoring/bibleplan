@@ -9,27 +9,29 @@ export default function useSignOut({ currentUser, version, isCustomSchedule, res
 
   const signOut = async () => {
     try {
+      // If a user is signed in, update Firestore with the latest version and isCustomSchedule.
       if (currentUser) {
         const safeVersion = typeof version === 'undefined' ? 'nasb' : version;
         const safeIsCustomSchedule = typeof isCustomSchedule === 'undefined' ? false : isCustomSchedule;
-
-        // Update only version and isCustomSchedule in Firestore.
+        // Write only these two fields to Firestore.
         await updateUserData(currentUser.uid, {
           version: safeVersion,
-          isCustomSchedule: safeIsCustomSchedule
+          isCustomSchedule: safeIsCustomSchedule,
         });
       }
+
+      // Sign out from Firebase Auth.
       await auth.signOut();
 
-      // Clear localStorage completely (clears local UI progress, etc.)
+      // Clear localStorage completely.
       localStorage.clear();
 
-      // Reset local state if needed.
+      // Reset any local state if you passed a resetState callback.
       if (resetState && typeof resetState === 'function') {
         resetState();
       }
 
-      // Navigate to home and force a full reload.
+      // Navigate to home ("/") and force a full reload.
       await router.replace('/');
     } catch (error) {
       console.error('Sign out error:', error);

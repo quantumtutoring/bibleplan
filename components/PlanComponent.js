@@ -1,4 +1,4 @@
-// PlanComponent.js
+// components/PlanComponent.js
 import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -16,53 +16,66 @@ export default function PlanComponent({ forcedMode }) {
   const { getItem, setItem } = useLocalStorage();
   const router = useRouter();
 
-  // --- Mount flag ---
+  // Mount flag
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  // --- Auth/Firestore ---
+  // Auth / Firestore data
   const { currentUser, userData } = useListenFireStore();
   const { updateUserData } = writeFireStore();
 
-  // --- State for settings ---
-  const [currentVersion, setCurrentVersion] = useState(() => getItem('version', 'nasb'));
-  const [otChapters, setOtChapters] = useState(() =>
-    currentUser && userData && userData.otChapters
-      ? userData.otChapters
-      : getItem('otChapters', '2')
-  );
-  const [ntChapters, setNtChapters] = useState(() =>
-    currentUser && userData && userData.ntChapters
-      ? userData.ntChapters
-      : getItem('ntChapters', '1')
-  );
-  const [isCustomSchedule, setIsCustomSchedule] = useState(() => {
-    if (forcedMode === 'custom') return true;
-    if (forcedMode === 'default') return false;
-    return getItem('isCustomSchedule', false);
-  });
+  // For signed-out users, use localStorage defaults;
+  // for signed-in users, we use the Firestore values as the source of truth.
+  const initialVersion = currentUser && userData && userData.version ? userData.version : getItem('version', 'nasb');
+  const [currentVersion, setCurrentVersion] = useState(initialVersion);
+
+  const initialOT = currentUser && userData && userData.otChapters ? userData.otChapters : getItem('otChapters', '2');
+  const [otChapters, setOtChapters] = useState(initialOT);
+
+  const initialNT = currentUser && userData && userData.ntChapters ? userData.ntChapters : getItem('ntChapters', '1');
+  const [ntChapters, setNtChapters] = useState(initialNT);
+
+  const initialIsCustom = currentUser && userData ? userData.isCustomSchedule : getItem('isCustomSchedule', false);
+  const [isCustomSchedule, setIsCustomSchedule] = useState(initialIsCustom);
+
+  // customPlanText is local UI state.
   const [customPlanText, setCustomPlanText] = useState('');
 
-  // Create refs for DefaultPlan and CustomPlan.
+  // Create refs for DefaultPlan and CustomPlan (both expose generateSchedule methods).
   const defaultPlanRef = useRef();
   const customPlanRef = useRef();
 
-  // Combined generate handler.
+  // Combined generate handler for the single generate button.
   const handleGenerate = () => {
     if (isCustomSchedule) {
-      // Call custom plan's generate method via its ref.
       if (customPlanRef.current) {
         customPlanRef.current.generateSchedule();
       }
     } else {
-      // For default mode, clear progress on generate.
       if (defaultPlanRef.current) {
+        // In default mode, we clear progress on generate.
         defaultPlanRef.current.generateSchedule(true);
       }
     }
   };
 
-  // --- Routing: update mode based on URL ---
+
+// nt/ot Chapter sync
+useEffect(() => {
+  if (currentUser && userData) {
+    if (userData.otChapters && userData.otChapters !== otChapters) {
+      setOtChapters(userData.otChapters);
+      setItem('otChapters', userData.otChapters);
+    }
+    if (userData.ntChapters && userData.ntChapters !== ntChapters) {
+      setNtChapters(userData.ntChapters);
+      setItem('ntChapters', userData.ntChapters);
+    }
+  }
+}, [currentUser, userData]);
+
+
+  // Routing: update mode based on URL.
   useEffect(() => {
     if (router.pathname === '/custom' && !isCustomSchedule) {
       setIsCustomSchedule(true);
@@ -73,40 +86,16 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [router.pathname, isCustomSchedule, setItem]);
 
-  // --- Update localStorage when settings change ---
+  // For signed-out users, keep writing to localStorage.
   useEffect(() => {
-    setItem('version', currentVersion);
-  }, [currentVersion, setItem]);
-
-  useEffect(() => {
-    if (currentUser && userData && userData.version && userData.version !== currentVersion) {
-      setCurrentVersion(userData.version);
-      setItem('version', userData.version);
+    if (!currentUser) {
+      setItem('version', currentVersion);
+      setItem('otChapters', otChapters);
+      setItem('ntChapters', ntChapters);
     }
-  }, []); // run once on mount
+  }, [currentVersion, otChapters, ntChapters, currentUser, setItem]);
 
-  useEffect(() => {
-    if (currentUser && userData) {
-      if (userData.otChapters && userData.otChapters !== otChapters) {
-        setOtChapters(userData.otChapters);
-        setItem('otChapters', userData.otChapters);
-      }
-      if (userData.ntChapters && userData.ntChapters !== ntChapters) {
-        setNtChapters(userData.ntChapters);
-        setItem('ntChapters', userData.ntChapters);
-      }
-    }
-  }, [currentUser, userData, setItem]);
-
-  useEffect(() => {
-    setItem('otChapters', otChapters);
-  }, [otChapters, setItem]);
-
-  useEffect(() => {
-    setItem('ntChapters', ntChapters);
-  }, [ntChapters, setItem]);
-
-  // --- Export handler ---
+  // Export handler.
   const handleExportExcel = (schedule, progressMap) => {
     exportScheduleToExcel(schedule, progressMap);
   };
@@ -124,7 +113,7 @@ export default function PlanComponent({ forcedMode }) {
         version={currentVersion}
         handleVersionChange={setCurrentVersion}
         resetState={() => {}}
-        isCustomSchedule={isCustomSchedule}
+        isCustomSchedule={isCustomSchedule} 
       />
       <div className={styles.container} id="main-content">
         <ControlsPanel
@@ -139,7 +128,7 @@ export default function PlanComponent({ forcedMode }) {
           updateUserData={updateUserData}
           customPlanText={customPlanText}
           setCustomPlanText={setCustomPlanText}
-          onGenerate={handleGenerate} // single generate callback for both modes
+          onGenerate={handleGenerate}
           exportToExcel={handleExportExcel}
         />
         {isCustomSchedule ? (

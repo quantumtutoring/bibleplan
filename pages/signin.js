@@ -1,4 +1,4 @@
-// components/Signin.js
+// pages/Signin.js
 import { useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import Head from "next/head";
@@ -25,7 +25,7 @@ export default function Signin() {
   const [shouldRender, setShouldRender] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Read default settings from localStorage.
+  // Read default settings from localStorage (used only if no Firestore data yet).
   const defaultVersion = getItem("version", "nasb");
   const defaultIsCustom = getItem("isCustomSchedule", false);
   const defaultOT = getItem("otChapters", "2");
@@ -34,7 +34,7 @@ export default function Signin() {
   const defaultCustomProgressMap = getItem("customProgressMap", {});
   const defaultCustomSchedule = getItem("customSchedule", null);
 
-  // When a user is signed in and verified, fetch their Firestore doc and route.
+  // When a user is signed in and verified, fetch their Firestore document.
   useEffect(() => {
     if (loading) return;
     if (currentUser && currentUser.emailVerified) {
@@ -44,6 +44,7 @@ export default function Signin() {
           const docSnap = await getDoc(userDocRef);
           if (docSnap.exists()) {
             const userData = docSnap.data();
+            // Firestore values become the source of truth for the session.
             if (userData.isCustomSchedule === true) {
               console.log("Routing to /custom based on Firestore");
               router.push("/custom");
@@ -108,7 +109,7 @@ export default function Signin() {
     try {
       const userCredential = await auth.createUserWithEmailAndPassword(email, password);
       const user = userCredential.user;
-      // Save as top-level fields (not nested under settings)
+      // Save default settings into Firestore.
       await updateUserData(user.uid, {
         version: defaultVersion,
         otChapters: defaultOT,
@@ -116,7 +117,7 @@ export default function Signin() {
         defaultProgress: defaultProgressMap,
         customProgress: defaultCustomProgressMap,
         customSchedule: defaultCustomSchedule,
-        isCustomSchedule: defaultIsCustom
+        isCustomSchedule: defaultIsCustom,
       });
       await user.sendEmailVerification();
       setMessage("Verification email sent. Please verify your email and then sign in.");
