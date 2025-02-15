@@ -32,7 +32,7 @@ export default function useSignOut({ currentUser, version, isCustomSchedule, res
       }
 
       // Navigate to home ("/") and force a full reload.
-      await router.replace('/');
+      window.location.href = '/';
     } catch (error) {
       console.error('Sign out error:', error);
     }

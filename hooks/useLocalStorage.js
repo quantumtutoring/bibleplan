@@ -6,12 +6,15 @@ export default function useLocalStorage() {
     if (typeof window === 'undefined') return defaultValue;
     try {
       const item = window.localStorage.getItem(key);
-      return item ? JSON.parse(item) : defaultValue;
+      if (!item) return defaultValue;
+      // If the stored string doesn't start with a JSON indicator, return defaultValue.
+      if (item[0] !== '{' && item[0] !== '[' && item[0] !== '"') {
+        return defaultValue;
+      }
+      return JSON.parse(item);
     } catch (error) {
       console.error(`Error parsing localStorage key "${key}":`, error);
-      // Fallback: return the raw stored value if JSON parsing fails.
-      const raw = window.localStorage.getItem(key);
-      return raw !== null ? raw : defaultValue;
+      return defaultValue;
     }
   }, []);
 

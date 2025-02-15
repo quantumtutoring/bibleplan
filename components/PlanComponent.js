@@ -98,13 +98,14 @@ export default function PlanComponent({ forcedMode }) {
     }
   }, [currentVersion, otChapters, ntChapters, currentUser, setItem]);
 
-  // Note: We intentionally do NOT add an effect here to update `currentVersion` when userData changes.
-  // The version is read only once upon sign-in (via initialVersion) and then remains unchanged.
-
   // Export handler.
   const handleExportExcel = (schedule, progressMap) => {
     exportScheduleToExcel(schedule, progressMap);
   };
+
+  // State to track if sign out is in progress.
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const fadeDuration = 500; // duration in ms
 
   if (!mounted) return null;
 
@@ -114,49 +115,55 @@ export default function PlanComponent({ forcedMode }) {
         <title>Bible Reading Planner</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
       </Head>
-      <Header
-        currentUser={currentUser}
-        version={currentVersion}
-        handleVersionChange={setCurrentVersion}
-        resetState={resetState}
-        isCustomSchedule={isCustomSchedule} 
-      />
-      <div className={styles.container} id="main-content">
-        <ControlsPanel
+      {/* This container fades out, but the background (styles.pageBackground) stays static */}
+      <div style={{ opacity: isSigningOut ? 0 : 1, transition: `opacity ${fadeDuration}ms ease-out` }}>
+        <Header
           currentUser={currentUser}
           version={currentVersion}
           handleVersionChange={setCurrentVersion}
-          otChapters={otChapters}
-          setOtChapters={setOtChapters}
-          ntChapters={ntChapters}
-          setNtChapters={setNtChapters}
+          resetState={resetState}
           isCustomSchedule={isCustomSchedule}
-          updateUserData={updateUserData}
-          customPlanText={customPlanText}
-          setCustomPlanText={setCustomPlanText}
-          onGenerate={handleGenerate}
-          exportToExcel={handleExportExcel}
+          // Pass a callback to notify PlanComponent that sign out has started.
+          onSignOut={() => setIsSigningOut(true)}
+          fadeDuration={fadeDuration}
         />
-        {isCustomSchedule ? (
-          <CustomPlan
-            ref={customPlanRef}
+        <div className={styles.container} id="main-content">
+          <ControlsPanel
             currentUser={currentUser}
-            userData={userData}
-            currentVersion={currentVersion}
+            version={currentVersion}
+            handleVersionChange={setCurrentVersion}
+            otChapters={otChapters}
+            setOtChapters={setOtChapters}
+            ntChapters={ntChapters}
+            setNtChapters={setNtChapters}
+            isCustomSchedule={isCustomSchedule}
             updateUserData={updateUserData}
             customPlanText={customPlanText}
+            setCustomPlanText={setCustomPlanText}
+            onGenerate={handleGenerate}
+            exportToExcel={handleExportExcel}
           />
-        ) : (
-          <DefaultPlan
-            ref={defaultPlanRef}
-            currentUser={currentUser}
-            userData={userData}
-            currentVersion={currentVersion}
-            otChapters={otChapters}
-            ntChapters={ntChapters}
-            updateUserData={updateUserData}
-          />
-        )}
+          {isCustomSchedule ? (
+            <CustomPlan
+              ref={customPlanRef}
+              currentUser={currentUser}
+              userData={userData}
+              currentVersion={currentVersion}
+              updateUserData={updateUserData}
+              customPlanText={customPlanText}
+            />
+          ) : (
+            <DefaultPlan
+              ref={defaultPlanRef}
+              currentUser={currentUser}
+              userData={userData}
+              currentVersion={currentVersion}
+              otChapters={otChapters}
+              ntChapters={ntChapters}
+              updateUserData={updateUserData}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
